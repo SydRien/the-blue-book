@@ -1,12 +1,34 @@
 import type { BlueBookDocument } from "@/types/document";
+import type {
+  CreateDocumentInput,
+  CreateProjectInput,
+  DocumentSummary,
+  Project,
+  ProjectWithDocuments,
+  SaveDocumentInput,
+} from "@/types/project";
+
+export type SyncStatus =
+  | "local-only"
+  | "saved-local"
+  | "syncing"
+  | "synced"
+  | "sync-error"
+  | "loading";
 
 /**
- * Storage abstraction for Blue Book documents.
- * Local persistence implements this now; cloud can replace it later
- * without changing editor or schema code.
+ * Backend-agnostic repository for projects and documents.
+ * UI and editor depend on this interface only.
  */
-export interface DocumentStorage {
-  load(): Promise<BlueBookDocument | null>;
-  save(document: BlueBookDocument): Promise<void>;
-  clear(): Promise<void>;
+export interface BlueBookRepository {
+  listProjects(): Promise<Project[]>;
+  createProject(input: CreateProjectInput): Promise<Project>;
+  getProject(projectId: string): Promise<ProjectWithDocuments | null>;
+  listDocuments(projectId: string): Promise<DocumentSummary[]>;
+  createDocument(input: CreateDocumentInput): Promise<BlueBookDocument>;
+  loadDocument(
+    documentId: string,
+    projectId?: string,
+  ): Promise<BlueBookDocument | null>;
+  saveDocument(input: SaveDocumentInput): Promise<SyncStatus>;
 }

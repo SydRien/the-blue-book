@@ -1,6 +1,5 @@
+import type { SyncStatus } from "@/lib/storage";
 import type { ScriptBlockType } from "@/types/document";
-
-export type SaveStatus = "loading" | "saving" | "saved" | "error";
 
 type StatusBarProps = {
   projectName: string;
@@ -8,32 +7,40 @@ type StatusBarProps = {
   activeType: ScriptBlockType;
   exportVisible: boolean;
   blockCount: number;
-  saveStatus: SaveStatus;
+  syncStatus: SyncStatus;
 };
 
-function saveStatusLabel(status: SaveStatus): string {
+function syncLabel(status: SyncStatus): string {
   switch (status) {
     case "loading":
       return "Loading";
-    case "saving":
-      return "Saving";
-    case "error":
-      return "Save Error";
-    case "saved":
+    case "local-only":
+      return "Local Only";
+    case "saved-local":
       return "Saved Locally";
+    case "syncing":
+      return "Syncing";
+    case "synced":
+      return "Synced";
+    case "sync-error":
+      return "Local · Sync Pending";
   }
 }
 
-function saveStatusLed(status: SaveStatus): string {
+function syncLed(status: SyncStatus): string {
   switch (status) {
     case "loading":
       return "bg-led-orange text-led-orange";
-    case "saving":
+    case "local-only":
       return "bg-led-cyan text-led-cyan";
-    case "error":
-      return "bg-[#c45c5c] text-[#c45c5c]";
-    case "saved":
+    case "saved-local":
       return "bg-led-green text-led-green";
+    case "syncing":
+      return "bg-led-cyan text-led-cyan";
+    case "synced":
+      return "bg-led-green text-led-green";
+    case "sync-error":
+      return "bg-led-orange text-led-orange";
   }
 }
 
@@ -43,18 +50,18 @@ export function StatusBar({
   activeType,
   exportVisible,
   blockCount,
-  saveStatus,
+  syncStatus,
 }: StatusBarProps) {
   return (
     <footer className="flex h-8 shrink-0 items-center justify-between border-t border-panel-border bg-status px-3">
       <div className="flex items-center gap-3">
         <span className="inline-flex items-center gap-1.5">
           <span
-            className={`led-dot h-1.5 w-1.5 rounded-full ${saveStatusLed(saveStatus)}`}
+            className={`led-dot h-1.5 w-1.5 rounded-full ${syncLed(syncStatus)}`}
             aria-hidden
           />
           <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
-            {saveStatusLabel(saveStatus)}
+            {syncLabel(syncStatus)}
           </span>
         </span>
         <span className="text-panel-border">|</span>
@@ -84,7 +91,7 @@ export function StatusBar({
           </span>
         </span>
         <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
-          Phase 3.5 · Local
+          Phase 4 · Cloud
         </span>
       </div>
     </footer>

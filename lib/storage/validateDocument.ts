@@ -73,6 +73,18 @@ function normalizeBlock(value: unknown): DocumentBlock | null {
   };
 }
 
+export function parseStoredBlocks(value: unknown): DocumentBlock[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const blocks = value
+    .map(normalizeBlock)
+    .filter((block): block is DocumentBlock => block !== null);
+
+  return blocks.length > 0 ? blocks : null;
+}
+
 export function parseStoredDocument(value: unknown): BlueBookDocument | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -88,15 +100,8 @@ export function parseStoredDocument(value: unknown): BlueBookDocument | null {
     return null;
   }
 
-  if (!Array.isArray(candidate.blocks)) {
-    return null;
-  }
-
-  const blocks = candidate.blocks
-    .map(normalizeBlock)
-    .filter((block): block is DocumentBlock => block !== null);
-
-  if (blocks.length === 0) {
+  const blocks = parseStoredBlocks(candidate.blocks);
+  if (!blocks) {
     return null;
   }
 
