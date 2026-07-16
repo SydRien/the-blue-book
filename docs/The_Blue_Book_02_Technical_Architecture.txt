@@ -1,0 +1,745 @@
+# The Blue Book
+
+## Technical Architecture Document
+
+Version: 0.2
+
+---
+
+# 1. System Overview
+
+The Blue Book is a personal cloud-based structured writing application.
+
+The application allows a single creator to:
+
+- Create writing projects
+- Write structured documents
+- Manually define paragraph types
+- Customize formatting
+- Save projects online
+- Access projects from multiple devices
+- Export professional documents
+
+The system should prioritize:
+
+- Accuracy
+- Stability
+- Simplicity
+- Maintainability
+
+The system should NOT prioritize:
+
+- Complex SaaS architecture
+- Collaboration
+- AI features
+- Automated story understanding
+
+---
+
+# 2. Technology Stack
+
+## Frontend
+
+Framework:
+
+Next.js
+
+Language:
+
+TypeScript
+
+Styling:
+
+Tailwind CSS
+
+Purpose:
+
+- Build the user interface
+- Manage application state
+- Render writing environment
+
+
+---
+
+# Editor Engine
+
+Recommended:
+
+TipTap Editor
+
+Reason:
+
+TipTap supports:
+
+- Custom document nodes
+- Structured blocks
+- JSON document storage
+- Extensions
+- Rich text editing
+
+
+The editor should not store plain text only.
+
+Documents should be stored as structured JSON.
+
+---
+
+# Backend
+
+Platform:
+
+Supabase
+
+Used for:
+
+- Authentication
+- PostgreSQL database
+- Cloud storage
+- API access
+
+
+---
+
+# Hosting
+
+Platform:
+
+Netlify
+
+Responsibilities:
+
+- Host Next.js application
+- Automatic deployment
+- Environment variables
+
+
+---
+
+# Export Libraries
+
+PDF:
+
+Use a reliable PDF generation library.
+
+Purpose:
+
+- Generate screenplay formatted PDF
+- Control margins
+- Control typography
+- Control page breaks
+
+
+DOCX:
+
+Use docx.js or equivalent.
+
+Purpose:
+
+- Generate editable Word documents
+- Preserve document structure
+
+
+---
+
+# 3. Application Architecture
+
+The application consists of five main systems:
+
+
+## 1. Project System
+
+Responsible for:
+
+- Creating projects
+- Renaming projects
+- Loading projects
+- Saving projects
+
+
+---
+
+## 2. Document Editor
+
+Responsible for:
+
+- Writing content
+- Creating blocks
+- Assigning block types
+- Editing documents
+
+
+---
+
+## 3. Document Storage
+
+Responsible for:
+
+- Saving documents
+- Syncing documents
+- Loading documents
+
+
+Storage:
+
+Supabase PostgreSQL
+
+
+---
+
+## 4. Formatting Engine
+
+Responsible for:
+
+- Applying visual rules
+- Converting blocks into formatted documents
+
+
+---
+
+## 5. Export Engine
+
+Responsible for:
+
+- PDF generation
+- DOCX generation
+
+
+---
+
+# 4. Frontend Architecture
+
+
+Recommended structure:
+
+
+```
+app/
+
+    page.tsx
+
+    projects/
+
+    editor/
+
+    settings/
+
+
+components/
+
+    Editor/
+
+    Toolbar/
+
+    Sidebar/
+
+    ExportPanel/
+
+    SettingsPanel/
+
+
+lib/
+
+    supabase.ts
+
+    documentParser.ts
+
+    export.ts
+
+
+types/
+
+    document.ts
+
+```
+
+
+---
+
+# 5. Editor Architecture
+
+
+The editor is the core of the application.
+
+
+The editor should use structured blocks.
+
+
+A document example:
+
+
+```
+Document
+
+|
+
+Block 1
+
+Type:
+Scene
+
+Content:
+INT. CAMP - NIGHT
+
+
+Block 2
+
+Type:
+Action
+
+Content:
+The wind moves across the battlefield.
+
+
+Block 3
+
+Type:
+Character
+
+Content:
+JIN WEN GONG
+
+
+Block 4
+
+Type:
+Dialogue
+
+Content:
+We cannot retreat.
+
+```
+
+
+---
+
+# 6. Block System
+
+
+Every block contains:
+
+
+```
+Block
+
+{
+
+id,
+
+type,
+
+content,
+
+metadata
+
+}
+
+```
+
+
+Example:
+
+
+```json
+{
+"type":"dialogue",
+
+"content":
+"We cannot retreat.",
+
+"metadata":
+{
+"export":true
+}
+
+}
+```
+
+
+---
+
+# 7. Block Type System
+
+
+Default types:
+
+
+Screenplay:
+
+- Scene Heading
+- Action
+- Character
+- Dialogue
+- Parenthetical
+- Transition
+
+
+Stage Play:
+
+- Act
+- Scene
+- Stage Direction
+- Lighting Cue
+- Sound Cue
+
+
+Interactive:
+
+- Interaction
+- Choice
+- Trigger
+- System Note
+
+
+---
+
+# 8. Custom Block Types
+
+
+Users can create custom types.
+
+
+Example:
+
+
+```
+Name:
+
+Gameplay Note
+
+
+Style:
+
+Blue italic
+
+
+Export:
+
+False
+
+```
+
+
+Custom types should store:
+
+- Name
+- Style settings
+- Export behavior
+
+
+---
+
+# 9. Data Flow
+
+
+## Writing Flow
+
+
+User edits document:
+
+
+↓
+
+TipTap creates structured JSON:
+
+
+↓
+
+Application saves:
+
+
+↓
+
+Supabase database
+
+
+---
+
+## Loading Flow
+
+
+User opens project:
+
+
+↓
+
+Fetch document JSON
+
+
+↓
+
+Convert JSON into TipTap document
+
+
+↓
+
+Render editor
+
+
+---
+
+# 10. Database Connection
+
+
+The frontend communicates with Supabase.
+
+
+Flow:
+
+
+```
+Next.js
+
+    |
+
+Supabase Client
+
+    |
+
+PostgreSQL
+
+```
+
+
+The application should keep database logic separated from UI components.
+
+
+---
+
+# 11. Export Architecture
+
+
+Export should NOT directly export editor HTML.
+
+
+Instead:
+
+
+```
+Document JSON
+
+↓
+
+Parser
+
+↓
+
+Formatting Rules
+
+↓
+
+Export Template
+
+↓
+
+PDF/DOCX
+
+```
+
+
+Reason:
+
+The same document should support multiple output formats.
+
+
+---
+
+# 12. Screenplay Export Rules
+
+
+PDF export should support:
+
+
+- Standard screenplay margins
+- Correct indentation
+- Page numbering
+- Character formatting
+- Dialogue formatting
+
+
+Example:
+
+
+Character:
+
+
+```
+          JOHN
+
+```
+
+
+Dialogue:
+
+
+```
+     I never wanted this.
+
+```
+
+
+---
+
+# 13. Development Principles
+
+
+## Principle 1
+
+Build the simplest working version first.
+
+
+Do not build:
+
+- AI
+- Collaboration
+- Advanced analytics
+
+
+before the core editor works.
+
+
+---
+
+## Principle 2
+
+Keep document structure clean.
+
+
+Never store documents as only plain text.
+
+
+---
+
+## Principle 3
+
+Separate:
+
+Content
+
+Structure
+
+Presentation
+
+
+Example:
+
+
+Content:
+
+"I cannot retreat."
+
+
+Structure:
+
+Dialogue
+
+
+Presentation:
+
+Centered screenplay dialogue format
+
+
+---
+
+# 14. MVP Development Order
+
+
+## Phase 1
+
+Application Foundation
+
+Build:
+
+- Next.js project
+- Basic UI
+- Editor page
+
+
+---
+
+## Phase 2
+
+Structured Editor
+
+Build:
+
+- TipTap
+- Block types
+- Toolbar
+
+
+---
+
+## Phase 3
+
+Cloud Storage
+
+Build:
+
+- Supabase connection
+- Save projects
+- Load projects
+
+
+---
+
+## Phase 4
+
+Customization
+
+Build:
+
+- Fonts
+- Sizes
+- Themes
+- Page settings
+
+
+---
+
+## Phase 5
+
+Export
+
+Build:
+
+- PDF
+- DOCX
+
+
+---
+
+# 15. Cursor Development Rules
+
+
+When generating code:
+
+
+1. Keep components modular.
+
+2. Avoid unnecessary dependencies.
+
+3. Explain major architectural decisions.
+
+4. Do not redesign the system without approval.
+
+5. Follow the existing document structure.
+
+6. Build one feature at a time.
+
+7. Prioritize working functionality over visual polish.
+
+
+---
+
+# Final Architecture Statement
+
+
+The Blue Book should be built as:
+
+A lightweight structured writing engine.
+
+The user defines meaning.
+
+The system preserves structure.
+
+The export engine transforms structured documents into professional formats.

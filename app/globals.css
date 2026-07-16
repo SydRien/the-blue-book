@@ -1,26 +1,169 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #111111;
+  --foreground: #f2f0eb;
+  --panel: #1a1a1c;
+  --panel-raised: #222226;
+  --panel-border: #2e2e34;
+  --panel-inset: #0d0d0f;
+  --muted: #8a8a90;
+  --accent: #3b9eff;
+  --accent-soft: #2a6fad;
+  --status: #141416;
+  --led-blue: #3b9eff;
+  --led-cyan: #3fd0c9;
+  --led-orange: #e89a5b;
+  --led-green: #7dcf6e;
+  --module-face: linear-gradient(180deg, #2a2a30 0%, #1c1c20 100%);
+  --module-press: linear-gradient(180deg, #18181c 0%, #242428 100%);
+  --grid-line: rgba(63, 208, 201, 0.04);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-panel-border: var(--panel-border);
+  --color-panel-inset: var(--panel-inset);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-status: var(--status);
+  --color-led-blue: var(--led-blue);
+  --color-led-cyan: var(--led-cyan);
+  --color-led-orange: var(--led-orange);
+  --color-led-green: var(--led-green);
+  --font-sans: var(--font-ibm-plex-sans);
+  --font-mono: var(--font-ibm-plex-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ibm-plex-sans), sans-serif;
+}
+
+.workspace-grid {
+  background-color: var(--background);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.module-button {
+  background: var(--module-face);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(0, 0, 0, 0.4);
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+
+.module-button:hover {
+  background: linear-gradient(180deg, #303038 0%, #222226 100%);
+}
+
+.module-button:active,
+.module-button[data-active="true"] {
+  background: var(--module-press);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(59, 158, 255, 0.25);
+  transform: translateY(1px);
+}
+
+.led-dot {
+  box-shadow: 0 0 6px currentColor;
+}
+
+.panel-screw {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, #5a5a62, #2a2a30 70%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+.script-editor-content {
+  min-height: 320px;
+}
+
+.script-editor-content .script-block {
+  position: relative;
+  margin: 0 0 1.1rem;
+  padding: 0.35rem 0.5rem 0.15rem;
+  border-radius: 2px;
+  color: var(--foreground);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.script-editor-content .script-block::before {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-family: var(--font-ibm-plex-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.script-editor-content .script-block[data-type="scene_heading"]::before {
+  content: "Scene Heading";
+  color: var(--led-blue);
+}
+
+.script-editor-content .script-block[data-type="action"]::before {
+  content: "Action";
+  color: var(--led-cyan);
+}
+
+.script-editor-content .script-block[data-type="character"]::before {
+  content: "Character";
+  color: var(--led-orange);
+}
+
+.script-editor-content .script-block[data-type="dialogue"]::before {
+  content: "Dialogue";
+  color: var(--led-green);
+}
+
+.script-editor-content .script-block[data-type="scene_heading"] {
+  text-transform: uppercase;
+}
+
+.script-editor-content .script-block[data-type="character"] {
+  text-align: center;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.script-editor-content .script-block[data-type="dialogue"] {
+  text-align: center;
+  padding-left: 4rem;
+  padding-right: 4rem;
+}
+
+.script-editor-content .script-block:focus-within {
+  background: rgba(59, 158, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(59, 158, 255, 0.25);
+}
+
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror-focused {
+  outline: none;
 }

@@ -1,0 +1,639 @@
+The Blue Book
+
+Document Data Schema
+
+Version: 0.3
+
+------------------------------------------------------------------------
+
+1. Purpose
+
+This document defines how The Blue Book stores, organizes, and processes
+writing documents.
+
+The Blue Book is a structured writing environment.
+
+Documents are not stored as plain text.
+
+Each paragraph is stored as a structured block with:
+
+-   Content
+-   Type
+-   Language
+-   Formatting rules
+-   Export behavior
+-   Metadata
+
+The user manually defines structure.
+
+The system does not automatically detect:
+
+-   Scenes
+-   Characters
+-   Dialogue
+-   Story structure
+
+------------------------------------------------------------------------
+
+2. Core Document Model
+
+A document consists of ordered blocks.
+
+Structure:
+
+Document
+
+Blocks
+
+Block Type + Content + Metadata
+
+Example:
+
+{ document_title: “Chengpu Battle”,
+
+blocks:[ { type:“scene_heading”, content:“INT. CAMP - NIGHT” },
+
+    {
+      type:"action",
+      content:"The wind moves across the battlefield."
+    },
+
+    {
+      type:"character",
+      content:"JIN WEN GONG"
+    },
+
+    {
+      type:"dialogue",
+      content:"We cannot retreat."
+    }
+
+] }
+
+------------------------------------------------------------------------
+
+3. Block Schema
+
+Every block contains:
+
+{ id,
+
+type,
+
+content,
+
+language,
+
+style,
+
+metadata
+
+}
+
+------------------------------------------------------------------------
+
+4. Language System
+
+The Blue Book supports:
+
+-   English
+-   Simplified Chinese
+-   Mixed language documents
+
+Language field:
+
+language:
+
+“en”
+
+or
+
+“zh”
+
+Example:
+
+{ type:“dialogue”,
+
+language:“zh”,
+
+content: “退避三舍，并非退让。” }
+
+------------------------------------------------------------------------
+
+5. Screenplay Format System
+
+The Blue Book supports professional screenplay formats.
+
+The format rules are separated from the content.
+
+------------------------------------------------------------------------
+
+5.1 English Screenplay Format
+
+Based on standard Hollywood screenplay conventions.
+
+Block Types
+
+Scene Heading
+
+Type:
+
+scene_heading
+
+Example:
+
+INT. OLD HOUSE - NIGHT
+
+Formatting:
+
+-   Uppercase
+-   Left aligned
+-   Scene spacing before and after
+
+------------------------------------------------------------------------
+
+Action
+
+Type:
+
+action
+
+Example:
+
+John enters the room.
+
+Formatting:
+
+-   Left aligned
+-   Normal paragraph
+
+------------------------------------------------------------------------
+
+Character
+
+Type:
+
+character
+
+Example:
+
+JOHN
+
+Formatting:
+
+-   Uppercase
+-   Center aligned
+
+------------------------------------------------------------------------
+
+Dialogue
+
+Type:
+
+dialogue
+
+Example:
+
+I never wanted this.
+
+Formatting:
+
+-   Narrow column
+-   Indented from both sides
+
+------------------------------------------------------------------------
+
+Parenthetical
+
+Type:
+
+parenthetical
+
+Example:
+
+(whispering)
+
+Formatting:
+
+-   Centered under character
+-   Smaller indentation
+
+------------------------------------------------------------------------
+
+Transition
+
+Type:
+
+transition
+
+Example:
+
+CUT TO:
+
+Formatting:
+
+-   Right aligned
+-   Uppercase
+
+------------------------------------------------------------------------
+
+5.2 Chinese Screenplay Format
+
+Chinese screenplay format.
+
+Block Types:
+
+场景
+
+Type:
+
+scene_heading_cn
+
+Example:
+
+内景 陶丘大营 夜
+
+Formatting:
+
+-   Left aligned
+-   Scene identifier
+
+------------------------------------------------------------------------
+
+动作
+
+Type:
+
+action_cn
+
+Example:
+
+夜色压境，晋军营火如星。
+
+Formatting:
+
+-   Standard paragraph
+
+------------------------------------------------------------------------
+
+人物
+
+Type:
+
+character_cn
+
+Example:
+
+晋文公
+
+Formatting:
+
+-   Center aligned
+
+------------------------------------------------------------------------
+
+对白
+
+Type:
+
+dialogue_cn
+
+Example:
+
+退避三舍，并非退让。
+
+Formatting:
+
+-   Centered character dialogue format
+
+------------------------------------------------------------------------
+
+6. Playwright Format System
+
+The Blue Book supports theatre scripts.
+
+------------------------------------------------------------------------
+
+6.1 English Playwright Format
+
+Act
+
+Type:
+
+act
+
+Example:
+
+ACT I
+
+------------------------------------------------------------------------
+
+Scene
+
+Type:
+
+scene
+
+Example:
+
+Scene 1
+
+------------------------------------------------------------------------
+
+Stage Direction
+
+Type:
+
+stage_direction
+
+Example:
+
+Lights fade. John enters from stage left.
+
+Formatting:
+
+-   Italic
+-   Indented
+
+------------------------------------------------------------------------
+
+Character
+
+Type:
+
+play_character
+
+Example:
+
+JOHN
+
+------------------------------------------------------------------------
+
+Dialogue
+
+Type:
+
+play_dialogue
+
+Example:
+
+I have waited for this moment.
+
+------------------------------------------------------------------------
+
+Lighting Cue
+
+Type:
+
+lighting_cue
+
+Example:
+
+LIGHTS: Blue wash
+
+------------------------------------------------------------------------
+
+Sound Cue
+
+Type:
+
+sound_cue
+
+Example:
+
+SOUND: Thunder
+
+------------------------------------------------------------------------
+
+6.2 Chinese 舞台剧格式
+
+幕
+
+Type:
+
+act_cn
+
+Example:
+
+第一幕
+
+------------------------------------------------------------------------
+
+场
+
+Type:
+
+scene_cn
+
+Example:
+
+第一场
+
+------------------------------------------------------------------------
+
+舞台提示
+
+Type:
+
+stage_direction_cn
+
+Example:
+
+灯光渐暗，人物从舞台右侧进入。
+
+------------------------------------------------------------------------
+
+人物
+
+Type:
+
+play_character_cn
+
+Example:
+
+王侯
+
+------------------------------------------------------------------------
+
+台词
+
+Type:
+
+play_dialogue_cn
+
+Example:
+
+我们必须继续前进。
+
+------------------------------------------------------------------------
+
+7. Interactive Narrative Format
+
+For games and VR scripts.
+
+Interaction
+
+Type:
+
+interaction
+
+Example:
+
+玩家选择是否追击楚军。
+
+------------------------------------------------------------------------
+
+Choice
+
+Type:
+
+choice
+
+Example:
+
+选择：
+
+A. 追击
+
+B. 撤退
+
+------------------------------------------------------------------------
+
+Trigger
+
+Type:
+
+trigger
+
+Example:
+
+Trigger: Player enters battlefield.
+
+------------------------------------------------------------------------
+
+System Note
+
+Type:
+
+system_note
+
+Example:
+
+Unlock after reputation > 5.
+
+------------------------------------------------------------------------
+
+8. Custom Block Schema
+
+Users can create new block types.
+
+Example:
+
+{ name: “Historical Note”,
+
+style: { italic:true, color:“gray” },
+
+export: false }
+
+Custom block properties:
+
+-   Name
+-   Display style
+-   Export visibility
+-   Category
+
+------------------------------------------------------------------------
+
+9. Document Settings Schema
+
+{ font:
+
+“Courier New”,
+
+font_size:
+
+12,
+
+page_size:
+
+“A4”,
+
+language:
+
+“en”,
+
+format:
+
+“screenplay”
+
+}
+
+------------------------------------------------------------------------
+
+10. Export Mapping
+
+Export engine converts:
+
+Document Blocks
+
+↓
+
+Format Rules
+
+↓
+
+PDF/DOCX
+
+Example:
+
+Block:
+
+character
+
+Screenplay PDF:
+
+Centered uppercase
+
+Block:
+
+dialogue
+
+Screenplay PDF:
+
+Indented dialogue column
+
+------------------------------------------------------------------------
+
+11. Future Statistics Support
+
+Because every block has a type, future functions can calculate:
+
+Word Count:
+
+All content blocks
+
+Character Dialogue:
+
+Find character blocks followed by dialogue blocks
+
+Scene Count:
+
+Count scene blocks
+
+Page Estimate:
+
+Based on exported formatting
+
+------------------------------------------------------------------------
+
+12. Design Principle
+
+The Blue Book does not interpret writing.
+
+The writer defines structure.
+
+The application maintains:
+
+-   Accuracy
+-   Consistency
+-   Formatting quality

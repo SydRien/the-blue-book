@@ -1,0 +1,428 @@
+The Blue Book
+
+Cursor Development Rules
+
+Version: 0.1
+
+------------------------------------------------------------------------
+
+1. Purpose
+
+This document defines how Cursor should assist in developing The Blue
+Book.
+
+Cursor should act as a software development assistant.
+
+Cursor should not redesign the product independently.
+
+All development decisions should follow:
+
+1.  Product Requirement Document
+2.  Technical Architecture Document
+3.  Document Data Schema
+4.  UI Design Specification
+
+------------------------------------------------------------------------
+
+2. Project Understanding
+
+Before writing code, Cursor must understand:
+
+The Blue Book is:
+
+-   A personal creative writing tool
+-   A structured document editor
+-   A cloud-based application
+-   A precision-focused writing environment
+
+The Blue Book is NOT:
+
+-   A social platform
+-   A collaborative writing platform
+-   An AI writing assistant
+-   A production management system
+
+------------------------------------------------------------------------
+
+3. Development Principles
+
+Principle 1: Build Incrementally
+
+Do not build the entire application at once.
+
+Development should happen feature by feature.
+
+Correct:
+
+Build editor.
+
+Test.
+
+Build block system.
+
+Test.
+
+Build database.
+
+Test.
+
+Incorrect:
+
+Generate the entire application architecture in one step.
+
+------------------------------------------------------------------------
+
+Principle 2: Preserve Existing Architecture
+
+Cursor must not:
+
+-   Replace frameworks
+-   Change database design
+-   Introduce new major dependencies
+
+without explicit approval.
+
+------------------------------------------------------------------------
+
+Principle 3: Avoid Overengineering
+
+The Blue Book is a personal tool.
+
+Do not add:
+
+-   Enterprise authentication
+-   Complex permission systems
+-   Collaboration features
+-   Unnecessary backend services
+
+------------------------------------------------------------------------
+
+4. Required Development Order
+
+Follow this order:
+
+Phase 1: Foundation
+
+Build:
+
+-   Next.js project
+-   TypeScript setup
+-   Tailwind CSS
+-   Basic application layout
+
+Goal:
+
+A running application.
+
+------------------------------------------------------------------------
+
+Phase 2: User Interface
+
+Build:
+
+-   Main workspace
+-   Sidebar
+-   Editor area
+-   Inspector panel
+-   Toolbar
+
+Follow:
+
+04_UI_Design_Specification.txt
+
+------------------------------------------------------------------------
+
+Phase 3: Structured Editor
+
+Implement:
+
+-   TipTap editor
+-   Document blocks
+-   Block types
+-   Block switching
+
+Follow:
+
+03_Document_Data_Schema.txt
+
+------------------------------------------------------------------------
+
+Phase 4: Cloud Storage
+
+Implement:
+
+-   Supabase connection
+-   User authentication
+-   Project storage
+-   Document saving
+
+------------------------------------------------------------------------
+
+Phase 5: Export System
+
+Implement:
+
+-   PDF export
+-   DOCX export
+
+Export must use:
+
+Document structure
+
+NOT
+
+Raw editor HTML
+
+------------------------------------------------------------------------
+
+5. Cursor Prompt Rules
+
+Prompts should be specific.
+
+Good example:
+
+“Implement the Scene Heading block type in TipTap.
+
+Requirements:
+
+-   Add scene_heading node
+-   Store as JSON
+-   Add toolbar button
+-   Add rendering style
+
+Do not modify database or unrelated components.”
+
+------------------------------------------------------------------------
+
+Bad example:
+
+“Make the script editor better.”
+
+------------------------------------------------------------------------
+
+6. Coding Rules
+
+Components
+
+Keep components modular.
+
+Example:
+
+Good:
+
+components/
+
+Editor.tsx
+
+Toolbar.tsx
+
+Sidebar.tsx
+
+Bad:
+
+One large page.tsx containing everything.
+
+------------------------------------------------------------------------
+
+Naming
+
+Use clear names.
+
+Examples:
+
+Good:
+
+DocumentBlock
+
+ExportService
+
+ProjectManager
+
+Bad:
+
+Helper
+
+Utils2
+
+Temp
+
+------------------------------------------------------------------------
+
+Comments
+
+Add comments for:
+
+-   Complex logic
+-   Data transformations
+-   Export rules
+
+Do not comment obvious code.
+
+------------------------------------------------------------------------
+
+7. Debugging Workflow
+
+When an error occurs:
+
+Step 1:
+
+Read the error message.
+
+Step 2:
+
+Identify the responsible component.
+
+Step 3:
+
+Make the smallest possible fix.
+
+Step 4:
+
+Test again.
+
+Do not rewrite large sections unnecessarily.
+
+------------------------------------------------------------------------
+
+8. Feature Request Workflow
+
+For every new feature:
+
+Step 1:
+
+Explain:
+
+-   Purpose
+-   Data affected
+-   Components affected
+
+Step 2:
+
+Create implementation plan.
+
+Step 3:
+
+Implement.
+
+Step 4:
+
+Test.
+
+------------------------------------------------------------------------
+
+9. Database Rules
+
+Database changes must consider future expansion.
+
+Do not store:
+
+Only plain text.
+
+Store:
+
+Structured data.
+
+Example:
+
+Correct:
+
+{ type: “dialogue”,
+
+content: “Hello” }
+
+Incorrect:
+
+“Hello”
+
+------------------------------------------------------------------------
+
+10. Export Rules
+
+Export is a core feature.
+
+Never create exports directly from visual editor appearance.
+
+Correct:
+
+Document JSON
+
+↓
+
+Formatting Rules
+
+↓
+
+PDF/DOCX
+
+Incorrect:
+
+Screenshot editor
+
+↓
+
+Export image
+
+------------------------------------------------------------------------
+
+11. UI Rules
+
+Follow:
+
+04_UI_Design_Specification.txt
+
+The interface should feel:
+
+-   Y2K
+-   Retro futuristic
+-   Modular synthesizer inspired
+-   Creative instrument
+
+Avoid:
+
+-   Generic dashboards
+-   Corporate SaaS appearance
+-   Excessive gradients
+-   Unnecessary animations
+
+------------------------------------------------------------------------
+
+12. Dependency Rules
+
+Before installing a package:
+
+Explain:
+
+-   Why it is needed
+-   Alternative options
+-   Impact on project
+
+Avoid unnecessary packages.
+
+------------------------------------------------------------------------
+
+13. AI Usage Rules
+
+AI features are NOT part of MVP.
+
+Do not implement:
+
+-   Text generation
+-   Story suggestions
+-   Character generation
+-   Automatic analysis
+
+Future AI features must be separated from the core writing system.
+
+------------------------------------------------------------------------
+
+14. Final Development Goal
+
+The goal is not to create the largest writing application.
+
+The goal is to create:
+
+A precise, reliable, personal creative writing instrument.
+
+Cursor should help build the tool.
+
+The creator remains responsible for the story.

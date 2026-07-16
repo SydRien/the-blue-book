@@ -1,0 +1,287 @@
+# The Blue Book
+
+## Product Requirement Document (PRD)
+
+Version: 0.1
+
+---
+
+# 1. Product Overview
+
+## Product Name
+
+The Blue Book
+
+## Product Type
+
+Personal cloud-based structured writing environment.
+
+---
+
+# 2. Product Vision
+
+The Blue Book is a lightweight writing application designed for personal creative work.
+
+It helps creators write and format:
+
+- Screenplays
+- Stage plays
+- Game narratives
+- VR scripts
+- Interactive storytelling documents
+
+The core philosophy:
+
+"The writer defines the structure. The software preserves precision."
+
+The Blue Book does not attempt to replace creativity or automatically understand writing.
+
+Instead, it provides a reliable structure-based writing environment.
+
+---
+
+# 3. Core Principles
+
+## Structured Writing
+
+Documents are not stored as plain text.
+
+Each paragraph is a structured block with:
+
+- Type
+- Content
+- Formatting rules
+- Metadata
+
+## Manual Structure Definition
+
+The user manually defines each paragraph type.
+
+The system does NOT:
+
+- Automatically detect scenes
+- Automatically detect characters
+- Automatically analyze dialogue
+- Automatically generate outlines
+
+---
+
+# 4. Target User
+
+Primary user:
+
+A single creator.
+
+The application is designed for personal use.
+
+No multi-user collaboration is required.
+
+---
+
+# 5. MVP Goals
+
+The first version should allow the user to:
+
+1. Create writing projects
+2. Rename projects
+3. Write documents
+4. Assign paragraph categories
+5. Customize document appearance
+6. Save projects in the cloud
+7. Access projects from multiple computers
+8. Export professional documents
+
+---
+
+# 6. Core Features
+
+## Project Management
+
+Users can:
+
+- Create project
+- Rename project
+- Delete project
+- Open project
+- Save project automatically
+
+---
+
+## Structured Document Editor
+
+The editor is the core function.
+
+Users write normally.
+
+Each paragraph can be assigned a type.
+
+Default block types:
+
+Screenplay:
+
+- Scene Heading
+- Action
+- Character
+- Dialogue
+- Parenthetical
+- Transition
+
+Stage Play:
+
+- Act
+- Scene
+- Stage Direction
+- Lighting Cue
+- Sound Cue
+
+Interactive Narrative:
+
+- Interaction
+- Choice
+- Trigger
+- System Note
+
+---
+
+## Custom Block Types
+
+Users can create custom paragraph categories.
+
+Example:
+
+Name:
+Gameplay Note
+
+Style:
+Blue italic text
+
+Export:
+Hidden
+
+Custom categories support:
+
+- Name
+- Visual style
+- Export behavior
+
+---
+
+## Document Appearance Settings
+
+Users can customize:
+
+Editor:
+
+- Font
+- Font size
+- Line spacing
+- Theme
+
+Document:
+
+- Page size
+- Margins
+- Page color
+- Header/footer
+
+---
+
+## Cloud Storage
+
+The application should support access from multiple computers.
+
+Requirements:
+
+- User login
+- Cloud project storage
+- Automatic saving
+- Loading previous projects
+
+Recommended service:
+
+Supabase
+
+---
+
+## Export
+
+The document should export into professional formats.
+
+PDF:
+
+- Standard screenplay formatting
+- Correct margins
+- Correct indentation
+- Page numbers
+- Chinese and English font support
+
+DOCX:
+
+- Editable Microsoft Word file
+- Preserve document structure
+
+---
+
+# 7. Future Features
+
+Not part of MVP.
+
+Statistics:
+
+- Word count
+- Page count
+- Character dialogue count
+- Scene count
+
+Outline System:
+
+Users can add scene summaries and display an outline view.
+
+Character Tracking:
+
+- Character appearance count
+- Dialogue amount
+- Scene participation
+
+---
+
+# 8. Non Goals
+
+The Blue Book will NOT include:
+
+- AI writing generation
+- Automatic story analysis
+- Team collaboration
+- Production management
+- Casting tools
+- Scheduling tools
+
+---
+
+# 9. Product Success Criteria
+
+The MVP is successful when:
+
+A user can:
+
+1. Create a project
+2. Write a complete script
+3. Manually assign structure
+4. Save it online
+5. Open it on another computer
+6. Export a professional PDF
+
+---
+
+# Final Product Statement
+
+The Blue Book is a precise, lightweight, structured writing environment.
+
+It combines:
+
+- The document precision of Overleaf
+- The formatting discipline of Final Draft
+- The flexibility of a creative notebook
+
+The user creates meaning.
+The software preserves structure.

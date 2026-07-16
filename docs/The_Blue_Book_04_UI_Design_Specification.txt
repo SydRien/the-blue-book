@@ -1,0 +1,519 @@
+The Blue Book
+
+UI Design Specification
+
+Version: 0.3
+
+------------------------------------------------------------------------
+
+1. Design Philosophy
+
+The Blue Book is a personal creative writing instrument.
+
+The interface should feel like a professional creative device rather
+than a typical web application.
+
+The design inspiration:
+
+-   Overleaf
+-   Final Draft
+-   Typora
+-   Teenage Engineering products
+-   Modular synthesizers
+-   Y2K industrial design
+-   Retro-futuristic creative tools
+
+The interface should communicate:
+
+-   Precision
+-   Creativity
+-   Technical beauty
+-   Personal ownership
+
+------------------------------------------------------------------------
+
+2. Visual Direction
+
+Overall Style
+
+Keywords:
+
+Y2K
+
+Retro Futuristic
+
+Modular Synthesizer
+
+Creative Laboratory
+
+Digital Instrument
+
+The application should feel like:
+
+A writer’s workstation from an imagined future.
+
+Not:
+
+-   Corporate SaaS dashboard
+-   Generic productivity app
+-   Minimalist startup software
+
+------------------------------------------------------------------------
+
+3. Color System
+
+Primary background:
+
+Dark graphite
+
+Example:
+
+#111111
+
+Panels:
+
+Dark metallic gray
+
+Accent colors:
+
+Inspired by modular synthesizers:
+
+-   Electric blue
+-   Cyan
+-   Soft orange
+-   Neon green
+
+Text:
+
+Warm white
+
+The interface should avoid excessive neon.
+
+Colors should be used as functional indicators.
+
+------------------------------------------------------------------------
+
+4. Typography
+
+The interface should support:
+
+English:
+
+-   Inter
+-   IBM Plex Mono
+-   Space Mono
+
+Chinese:
+
+-   Noto Sans SC
+-   Source Han Sans
+
+Writing mode should prioritize readability.
+
+UI can use monospaced or technical fonts.
+
+------------------------------------------------------------------------
+
+5. Main Layout
+
+The application uses a three-column creative workspace.
+
+    --------------------------------------------------
+
+    THE BLUE BOOK
+
+    Project Name
+
+    --------------------------------------------------
+
+
+    Left Sidebar
+
+          |
+
+          |
+
+    Center Editor
+
+          |
+
+          |
+
+    Right Inspector
+
+
+    --------------------------------------------------
+
+    Status Bar
+
+    --------------------------------------------------
+
+------------------------------------------------------------------------
+
+6. Left Sidebar
+
+Purpose:
+
+Project navigation.
+
+Contains:
+
+Project Panel
+
+Example:
+
+    PROJECTS
+
+
+    ▼ Chengpu Battle VR
+
+       Script
+
+       Characters
+
+       Notes
+
+
+    ▼ Gray Waves
+
+       Script
+
+       Research
+
+------------------------------------------------------------------------
+
+Scene Navigation
+
+Future support:
+
+    SCENES
+
+
+    Scene 1
+
+    Scene 2
+
+    Scene 3
+
+Important:
+
+Scenes are created manually by the user.
+
+The system does not automatically detect scenes.
+
+------------------------------------------------------------------------
+
+7. Main Editor Area
+
+The editor is the most important part.
+
+The feeling should be:
+
+A digital writing notebook.
+
+Example:
+
+
+    [SCENE]
+
+
+    INT. CAMP - NIGHT
+
+
+    [ACTION]
+
+
+    The wind moves across the battlefield.
+
+
+    [CHARACTER]
+
+
+    JIN WEN GONG
+
+
+    [DIALOGUE]
+
+
+    We cannot retreat.
+
+------------------------------------------------------------------------
+
+8. Block Visualization
+
+Each block should visually communicate its type.
+
+Example:
+
+Scene:
+
+Blue label
+
+Action:
+
+Neutral
+
+Character:
+
+Centered text
+
+Dialogue:
+
+Indented text
+
+Custom:
+
+User defined color
+
+------------------------------------------------------------------------
+
+9. Toolbar Design
+
+The toolbar should feel like a modular synth control panel.
+
+Example:
+
+
+    +--------------------------------+
+
+    SCENE
+
+    ACTION
+
+    CHARACTER
+
+    DIALOGUE
+
+    NOTE
+
+    INTERACTION
+
+
+    EXPORT
+
+
+    +--------------------------------+
+
+Buttons should feel like physical modules.
+
+Design references:
+
+-   Synth knobs
+-   Hardware buttons
+-   Laboratory equipment
+
+------------------------------------------------------------------------
+
+10. Right Inspector Panel
+
+Purpose:
+
+Control selected block.
+
+Example:
+
+
+    BLOCK INSPECTOR
+
+
+    Type:
+
+    Dialogue
+
+
+    Font:
+
+    Courier New
+
+
+    Size:
+
+    12
+
+
+    Export:
+
+    ON
+
+
+    Style:
+
+    Default
+
+------------------------------------------------------------------------
+
+11. Settings Interface
+
+Document settings:
+
+
+    DOCUMENT SETTINGS
+
+
+    Format:
+
+    Screenplay
+
+
+    Language:
+
+    English
+
+
+    Font:
+
+    Courier New
+
+
+    Size:
+
+    12
+
+
+    Page:
+
+    A4
+
+
+    Margins:
+
+    Standard
+
+------------------------------------------------------------------------
+
+12. Export Interface
+
+Export should feel like a professional publishing tool.
+
+Example:
+
+
+    EXPORT DOCUMENT
+
+
+    Format:
+
+
+    [ PDF ]
+
+    [ DOCX ]
+
+
+    Template:
+
+
+    Screenplay
+
+    Playwright
+
+
+    [ EXPORT ]
+
+------------------------------------------------------------------------
+
+13. Writing Mode
+
+The application should support distraction-free writing.
+
+Writing Mode:
+
+-   Hide sidebars
+-   Larger text
+-   Minimal interface
+
+Example:
+
+
+              JIN WEN GONG
+
+
+         We cannot retreat.
+
+------------------------------------------------------------------------
+
+14. Responsive Design
+
+Primary target:
+
+Desktop browser.
+
+Supported:
+
+-   Laptop
+-   Desktop monitor
+
+Not required for MVP:
+
+-   Mobile editing
+-   Tablet optimization
+
+------------------------------------------------------------------------
+
+15. Animation Guidelines
+
+Animations should be subtle.
+
+Inspired by hardware interfaces.
+
+Examples:
+
+-   Soft panel transitions
+-   Button feedback
+-   Loading indicators
+
+Avoid:
+
+-   Excessive movement
+-   Game-like animations
+-   Distracting effects
+
+------------------------------------------------------------------------
+
+16. UI Component Style
+
+Components should feel modular.
+
+Examples:
+
+Buttons:
+
+Hardware switches
+
+Panels:
+
+Synth modules
+
+Sliders:
+
+Analog controls
+
+Indicators:
+
+LED lights
+
+------------------------------------------------------------------------
+
+17. Future Visual Features
+
+Possible additions:
+
+-   Custom themes
+-   Personal workspace skins
+-   Modular layouts
+-   Ambient background modes
+
+------------------------------------------------------------------------
+
+Final Design Statement
+
+The Blue Book should feel like a creative instrument.
+
+It is not an office application.
+
+It is not a social platform.
+
+It is a personal storytelling machine.
+
+The user writes the story.
+
+The interface becomes the instrument.
