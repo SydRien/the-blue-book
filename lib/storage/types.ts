@@ -6,6 +6,7 @@ import type {
   Project,
   ProjectWithDocuments,
   SaveDocumentInput,
+  UpdateProjectInput,
 } from "@/types/project";
 
 export type SyncStatus =
@@ -23,6 +24,8 @@ export type SyncStatus =
 export interface BlueBookRepository {
   listProjects(): Promise<Project[]>;
   createProject(input: CreateProjectInput): Promise<Project>;
+  updateProject(input: UpdateProjectInput): Promise<Project>;
+  deleteProject(projectId: string): Promise<void>;
   getProject(projectId: string): Promise<ProjectWithDocuments | null>;
   listDocuments(projectId: string): Promise<DocumentSummary[]>;
   createDocument(input: CreateDocumentInput): Promise<BlueBookDocument>;

@@ -8,6 +8,7 @@ import type {
   Project,
   ProjectWithDocuments,
   SaveDocumentInput,
+  UpdateProjectInput,
 } from "@/types/project";
 import type { BlueBookRepository, SyncStatus } from "@/lib/storage/types";
 import { parseStoredBlocks } from "@/lib/storage/validateDocument";
@@ -90,6 +91,36 @@ export class SupabaseBlueBookRepository implements BlueBookRepository {
     }
 
     return mapProject(data as ProjectRow);
+  }
+
+  async updateProject(input: UpdateProjectInput): Promise<Project> {
+    const timestamp = new Date().toISOString();
+    const { data, error } = await this.client
+      .from("projects")
+      .update({
+        title: input.title.trim() || "Untitled Project",
+        updated_at: timestamp,
+      })
+      .eq("id", input.projectId)
+      .select("id, title, description, created_at, updated_at")
+      .single();
+
+    if (error || !data) {
+      throw error ?? new Error("Failed to update project");
+    }
+
+    return mapProject(data as ProjectRow);
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    const { error } = await this.client
+      .from("projects")
+      .delete()
+      .eq("id", projectId);
+
+    if (error) {
+      throw error;
+    }
   }
 
   async getProject(projectId: string): Promise<ProjectWithDocuments | null> {

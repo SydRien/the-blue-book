@@ -25,6 +25,11 @@ export type CreateProjectInput = {
   description?: string;
 };
 
+export type UpdateProjectInput = {
+  projectId: string;
+  title: string;
+};
+
 export type CreateDocumentInput = {
   projectId: string;
   title: string;

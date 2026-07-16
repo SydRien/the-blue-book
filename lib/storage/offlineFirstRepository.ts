@@ -6,6 +6,7 @@ import type {
   Project,
   ProjectWithDocuments,
   SaveDocumentInput,
+  UpdateProjectInput,
 } from "@/types/project";
 import type { LocalBlueBookRepository } from "@/lib/storage/localBlueBookRepository";
 import type { BlueBookRepository, SyncStatus } from "@/lib/storage/types";
@@ -41,6 +42,28 @@ export class OfflineFirstRepository implements BlueBookRepository {
       return project;
     } catch {
       return this.local.createProject(input);
+    }
+  }
+
+  async updateProject(input: UpdateProjectInput): Promise<Project> {
+    const localProject = await this.local.updateProject(input);
+
+    try {
+      const remoteProject = await this.remote.updateProject(input);
+      await this.local.cacheProject(remoteProject);
+      return remoteProject;
+    } catch {
+      return localProject;
+    }
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    await this.local.deleteProject(projectId);
+
+    try {
+      await this.remote.deleteProject(projectId);
+    } catch {
+      // Local delete already applied; cloud sync can catch up later.
     }
   }
 

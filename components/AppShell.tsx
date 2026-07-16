@@ -247,6 +247,28 @@ export function AppShell() {
     }
   }
 
+  async function handleRenameProject(projectId: string, title: string) {
+    await repositoryRef.current.updateProject({ projectId, title });
+    await refreshProjects(activeProjectId, activeDocumentId);
+  }
+
+  async function handleDeleteProject(projectId: string) {
+    const remaining = projects.filter((project) => project.id !== projectId);
+    const nextProject = remaining[0] ?? null;
+    const nextDocumentId = nextProject?.documents[0]?.id ?? null;
+
+    await repositoryRef.current.deleteProject(projectId);
+
+    if (activeProjectId === projectId) {
+      skipNextSaveRef.current = true;
+      setDocument(null);
+      setActiveProjectId(null);
+      setActiveDocumentId(null);
+    }
+
+    await refreshProjects(nextProject?.id ?? null, nextDocumentId);
+  }
+
   function handleInspectorChange(next: InspectorSettings) {
     setActiveBlock({
       type: next.type,
@@ -288,6 +310,8 @@ export function AppShell() {
           activeDocumentId={activeDocumentId}
           onSelectDocument={handleSelectDocument}
           onCreateProject={handleCreateProject}
+          onRenameProject={handleRenameProject}
+          onDeleteProject={handleDeleteProject}
           creatingProject={creatingProject}
         />
         {document && activeDocumentId ? (
