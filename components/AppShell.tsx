@@ -11,6 +11,7 @@ import {
   InspectorPanel,
   type InspectorSettings,
 } from "@/components/Inspector/InspectorPanel";
+import { ExportPanel } from "@/components/Export/ExportPanel";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
 import { StatusBar } from "@/components/StatusBar/StatusBar";
 import {
@@ -47,6 +48,7 @@ export function AppShell() {
   const [creatingDocumentId, setCreatingDocumentId] = useState<string | null>(
     null,
   );
+  const [exportOpen, setExportOpen] = useState(false);
   const skipNextSaveRef = useRef(true);
   const isLocalOnly = getStorageBackend() === "local";
 
@@ -379,6 +381,7 @@ export function AppShell() {
             onActiveBlockChange={setActiveBlock}
             onEditorReady={setEditor}
             activeType={activeBlock.type}
+            onOpenExport={() => setExportOpen(true)}
           />
         ) : (
           <section className="flex min-w-0 flex-1 items-center justify-center bg-background">
@@ -412,6 +415,13 @@ export function AppShell() {
         blockCount={document?.blocks.length ?? 0}
         syncStatus={syncStatus}
       />
+      {document ? (
+        <ExportPanel
+          document={document}
+          open={exportOpen}
+          onClose={() => setExportOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

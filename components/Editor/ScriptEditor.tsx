@@ -24,6 +24,7 @@ type ScriptEditorProps = {
   onActiveBlockChange: (block: ActiveBlockState) => void;
   onEditorReady: (editor: Editor | null) => void;
   activeType: ScriptBlockType;
+  onOpenExport?: () => void;
 };
 
 function readActiveBlock(editor: Editor): ActiveBlockState | null {
@@ -51,6 +52,7 @@ export function ScriptEditor({
   onActiveBlockChange,
   onEditorReady,
   activeType,
+  onOpenExport,
 }: ScriptEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -129,7 +131,11 @@ export function ScriptEditor({
 
   return (
     <section className="flex min-w-0 flex-1 flex-col bg-background">
-      <EditorToolbar activeType={activeType} onSelectType={handleSelectType} />
+      <EditorToolbar
+        activeType={activeType}
+        onSelectType={handleSelectType}
+        onOpenExport={onOpenExport}
+      />
 
       <div className="workspace-grid flex flex-1 overflow-y-auto px-8 py-8">
         <div className="mx-auto w-full max-w-2xl">
