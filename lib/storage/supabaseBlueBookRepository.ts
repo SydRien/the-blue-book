@@ -8,6 +8,7 @@ import type {
   Project,
   ProjectWithDocuments,
   SaveDocumentInput,
+  UpdateDocumentInput,
   UpdateProjectInput,
 } from "@/types/project";
 import type { BlueBookRepository, SyncStatus } from "@/lib/storage/types";
@@ -192,6 +193,59 @@ export class SupabaseBlueBookRepository implements BlueBookRepository {
       title: data.title,
       blocks,
     };
+  }
+
+  async updateDocument(input: UpdateDocumentInput): Promise<DocumentSummary> {
+    const timestamp = new Date().toISOString();
+    const { data, error } = await this.client
+      .from("documents")
+      .update({
+        title: input.title.trim() || "Untitled",
+        updated_at: timestamp,
+      })
+      .eq("id", input.documentId)
+      .select("id, project_id, title, content_json, created_at, updated_at")
+      .single();
+
+    if (error || !data) {
+      throw error ?? new Error("Failed to update document");
+    }
+
+    const row = data as DocumentRow;
+    await this.client
+      .from("projects")
+      .update({ updated_at: timestamp })
+      .eq("id", row.project_id);
+
+    return mapDocumentSummary(row);
+  }
+
+  async deleteDocument(documentId: string): Promise<void> {
+    const { data, error: loadError } = await this.client
+      .from("documents")
+      .select("project_id")
+      .eq("id", documentId)
+      .maybeSingle();
+
+    if (loadError) {
+      throw loadError;
+    }
+
+    const { error } = await this.client
+      .from("documents")
+      .delete()
+      .eq("id", documentId);
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.project_id) {
+      await this.client
+        .from("projects")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", data.project_id);
+    }
   }
 
   async loadDocument(

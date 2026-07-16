@@ -6,6 +6,7 @@ import type {
   Project,
   ProjectWithDocuments,
   SaveDocumentInput,
+  UpdateDocumentInput,
   UpdateProjectInput,
 } from "@/types/project";
 
@@ -29,6 +30,8 @@ export interface BlueBookRepository {
   getProject(projectId: string): Promise<ProjectWithDocuments | null>;
   listDocuments(projectId: string): Promise<DocumentSummary[]>;
   createDocument(input: CreateDocumentInput): Promise<BlueBookDocument>;
+  updateDocument(input: UpdateDocumentInput): Promise<DocumentSummary>;
+  deleteDocument(documentId: string): Promise<void>;
   loadDocument(
     documentId: string,
     projectId?: string,

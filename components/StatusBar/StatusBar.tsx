@@ -14,16 +14,15 @@ function syncLabel(status: SyncStatus): string {
   switch (status) {
     case "loading":
       return "Loading";
+    case "syncing":
+      return "Saving";
     case "local-only":
-      return "Local Only";
     case "saved-local":
       return "Saved Locally";
-    case "syncing":
-      return "Syncing";
     case "synced":
-      return "Synced";
+      return "Synced to Cloud";
     case "sync-error":
-      return "Local · Sync Pending";
+      return "Error · Local Kept";
   }
 }
 
@@ -32,15 +31,14 @@ function syncLed(status: SyncStatus): string {
     case "loading":
       return "bg-led-orange text-led-orange";
     case "local-only":
-      return "bg-led-cyan text-led-cyan";
     case "saved-local":
-      return "bg-led-green text-led-green";
+      return "bg-led-cyan text-led-cyan";
     case "syncing":
       return "bg-led-cyan text-led-cyan";
     case "synced":
       return "bg-led-green text-led-green";
     case "sync-error":
-      return "bg-led-orange text-led-orange";
+      return "bg-[#c45c5c] text-[#c45c5c]";
   }
 }
 
@@ -91,7 +89,7 @@ export function StatusBar({
           </span>
         </span>
         <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
-          Phase 4 · Cloud
+          Phase 4.5 · Workspace
         </span>
       </div>
     </footer>

@@ -7,6 +7,7 @@ import type {
   Project,
   ProjectWithDocuments,
   SaveDocumentInput,
+  UpdateDocumentInput,
   UpdateProjectInput,
 } from "@/types/project";
 import type { BlueBookRepository, SyncStatus } from "@/lib/storage/types";
@@ -178,6 +179,57 @@ export class LocalBlueBookRepository implements BlueBookRepository {
     };
     writeDb(db);
     return document;
+  }
+
+  async updateDocument(input: UpdateDocumentInput): Promise<DocumentSummary> {
+    const db = readDb();
+    const existing = db.documents[input.documentId];
+    if (!existing) {
+      throw new Error("Document not found");
+    }
+
+    const timestamp = nowIso();
+    const title = input.title.trim() || "Untitled";
+    db.documents[input.documentId] = {
+      ...existing,
+      title,
+      updated_at: timestamp,
+    };
+
+    const project = db.projects[existing.project_id];
+    if (project) {
+      db.projects[existing.project_id] = {
+        ...project,
+        updated_at: timestamp,
+      };
+    }
+
+    writeDb(db);
+    return {
+      id: existing.id,
+      project_id: existing.project_id,
+      title,
+      created_at: existing.created_at,
+      updated_at: timestamp,
+    };
+  }
+
+  async deleteDocument(documentId: string): Promise<void> {
+    const db = readDb();
+    const existing = db.documents[documentId];
+    if (!existing) {
+      return;
+    }
+
+    delete db.documents[documentId];
+    const project = db.projects[existing.project_id];
+    if (project) {
+      db.projects[existing.project_id] = {
+        ...project,
+        updated_at: nowIso(),
+      };
+    }
+    writeDb(db);
   }
 
   async loadDocument(

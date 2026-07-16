@@ -30,6 +30,11 @@ export type UpdateProjectInput = {
   title: string;
 };
 
+export type UpdateDocumentInput = {
+  documentId: string;
+  title: string;
+};
+
 export type CreateDocumentInput = {
   projectId: string;
   title: string;

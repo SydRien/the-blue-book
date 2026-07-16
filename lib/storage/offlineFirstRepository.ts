@@ -6,6 +6,7 @@ import type {
   Project,
   ProjectWithDocuments,
   SaveDocumentInput,
+  UpdateDocumentInput,
   UpdateProjectInput,
 } from "@/types/project";
 import type { LocalBlueBookRepository } from "@/lib/storage/localBlueBookRepository";
@@ -96,6 +97,26 @@ export class OfflineFirstRepository implements BlueBookRepository {
       return document;
     } catch {
       return this.local.createDocument(input);
+    }
+  }
+
+  async updateDocument(input: UpdateDocumentInput): Promise<DocumentSummary> {
+    const localSummary = await this.local.updateDocument(input);
+
+    try {
+      return await this.remote.updateDocument(input);
+    } catch {
+      return localSummary;
+    }
+  }
+
+  async deleteDocument(documentId: string): Promise<void> {
+    await this.local.deleteDocument(documentId);
+
+    try {
+      await this.remote.deleteDocument(documentId);
+    } catch {
+      // Local delete already applied.
     }
   }
 

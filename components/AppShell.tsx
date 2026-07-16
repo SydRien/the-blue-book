@@ -44,6 +44,9 @@ export function AppShell() {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("loading");
   const [creatingProject, setCreatingProject] = useState(false);
+  const [creatingDocumentId, setCreatingDocumentId] = useState<string | null>(
+    null,
+  );
   const skipNextSaveRef = useRef(true);
   const isLocalOnly = getStorageBackend() === "local";
 
@@ -89,7 +92,7 @@ export function AppShell() {
       setActiveDocumentId(created.id);
       skipNextSaveRef.current = true;
       setDocument(created);
-      setSyncStatus(isLocalOnly ? "local-only" : "synced");
+      setSyncStatus(isLocalOnly ? "saved-local" : "synced");
       return;
     }
 
@@ -137,7 +140,7 @@ export function AppShell() {
 
     setActiveProjectId(nextProject.id);
     setActiveDocumentId(nextDocumentId);
-    setSyncStatus(isLocalOnly ? "local-only" : "synced");
+    setSyncStatus(isLocalOnly ? "saved-local" : "synced");
   }
 
   useEffect(() => {
@@ -189,7 +192,7 @@ export function AppShell() {
         })
         .then((status) => {
           if (isLocalOnly) {
-            setSyncStatus("local-only");
+            setSyncStatus("saved-local");
             return;
           }
           setSyncStatus(status === "synced" ? "synced" : "sync-error");
@@ -222,7 +225,7 @@ export function AppShell() {
       );
       skipNextSaveRef.current = true;
       setDocument(loaded ?? createSeedDocument());
-      setSyncStatus(isLocalOnly ? "local-only" : "synced");
+      setSyncStatus(isLocalOnly ? "saved-local" : "synced");
     } catch {
       skipNextSaveRef.current = true;
       setDocument(createSeedDocument());
@@ -269,6 +272,55 @@ export function AppShell() {
     await refreshProjects(nextProject?.id ?? null, nextDocumentId);
   }
 
+  async function handleCreateDocument(projectId: string) {
+    setCreatingDocumentId(projectId);
+    try {
+      const project = projects.find((item) => item.id === projectId);
+      const created = await repositoryRef.current.createDocument({
+        projectId,
+        title: `Document ${(project?.documents.length ?? 0) + 1}`,
+        document: createSeedDocument(),
+      });
+      await refreshProjects(projectId, created.id);
+    } finally {
+      setCreatingDocumentId(null);
+    }
+  }
+
+  async function handleRenameDocument(documentId: string, title: string) {
+    await repositoryRef.current.updateDocument({ documentId, title });
+    if (document && document.id === documentId) {
+      skipNextSaveRef.current = true;
+      setDocument({ ...document, title });
+    }
+    await refreshProjects(activeProjectId, activeDocumentId);
+  }
+
+  async function handleDeleteDocument(documentId: string) {
+    const owner = projects.find((project) =>
+      project.documents.some((item) => item.id === documentId),
+    );
+    if (!owner) {
+      return;
+    }
+
+    const remainingDocs = owner.documents.filter(
+      (item) => item.id !== documentId,
+    );
+    const nextDocumentId = remainingDocs[0]?.id ?? null;
+
+    await repositoryRef.current.deleteDocument(documentId);
+
+    if (activeDocumentId === documentId) {
+      skipNextSaveRef.current = true;
+      setDocument(null);
+      setActiveDocumentId(null);
+    }
+
+    // Empty project: refreshProjects will create a default Script document.
+    await refreshProjects(owner.id, nextDocumentId);
+  }
+
   function handleInspectorChange(next: InspectorSettings) {
     setActiveBlock({
       type: next.type,
@@ -310,9 +362,13 @@ export function AppShell() {
           activeDocumentId={activeDocumentId}
           onSelectDocument={handleSelectDocument}
           onCreateProject={handleCreateProject}
+          onCreateDocument={handleCreateDocument}
           onRenameProject={handleRenameProject}
           onDeleteProject={handleDeleteProject}
+          onRenameDocument={handleRenameDocument}
+          onDeleteDocument={handleDeleteDocument}
           creatingProject={creatingProject}
+          creatingDocumentId={creatingDocumentId}
         />
         {document && activeDocumentId ? (
           <ScriptEditor
@@ -326,9 +382,16 @@ export function AppShell() {
           />
         ) : (
           <section className="flex min-w-0 flex-1 items-center justify-center bg-background">
-            <p className="font-mono text-xs tracking-[0.16em] text-muted uppercase">
-              Loading document…
-            </p>
+            <div className="max-w-sm px-6 text-center">
+              <p className="font-mono text-xs tracking-[0.16em] text-muted uppercase">
+                {syncStatus === "loading"
+                  ? "Loading document…"
+                  : "No document open"}
+              </p>
+              <p className="mt-2 font-mono text-[10px] leading-relaxed text-muted">
+                Select a document in the sidebar, or create one with + Document.
+              </p>
+            </div>
           </section>
         )}
         <InspectorPanel
