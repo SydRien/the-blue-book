@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  exportDocumentToPdf,
+  exportDocument,
   inspectExportPipeline,
 } from "@/lib/export/exportDocument";
 import {
@@ -35,8 +35,8 @@ const MODE_OPTIONS: {
   enabled: boolean;
 }[] = [
   { id: "screenplay", label: "Screenplay", enabled: true },
-  { id: "stage_play", label: "Stage Play", enabled: false },
-  { id: "interactive", label: "Interactive Script", enabled: false },
+  { id: "stage_play", label: "Stage Play", enabled: true },
+  { id: "interactive", label: "Interactive Script", enabled: true },
 ];
 
 const FORMAT_OPTIONS: {
@@ -45,7 +45,7 @@ const FORMAT_OPTIONS: {
   enabled: boolean;
 }[] = [
   { id: "pdf", label: "PDF", enabled: true },
-  { id: "docx", label: "DOCX", enabled: false },
+  { id: "docx", label: "DOCX", enabled: true },
 ];
 
 const PAGE_SIZE_OPTIONS: {
@@ -215,7 +215,7 @@ export function ExportPanel({ document, open, onClose }: ExportPanelProps) {
     setPending(true);
     setError(null);
     try {
-      const { pipeline: result, filename } = await exportDocumentToPdf({
+      const { pipeline: result, filename } = await exportDocument({
         document,
         settings,
         titlePage: settings.includeTitlePage ? titlePage : undefined,
@@ -233,6 +233,9 @@ export function ExportPanel({ document, open, onClose }: ExportPanelProps) {
       setPending(false);
     }
   }
+
+  const downloadLabel =
+    settings.format === "docx" ? "Download DOCX" : "Download PDF";
 
   const summary = [
     MODE_OPTIONS.find((item) => item.id === settings.mode)?.label,
@@ -355,7 +358,7 @@ export function ExportPanel({ document, open, onClose }: ExportPanelProps) {
             className="module-button rounded-sm border border-panel-border px-4 py-2.5 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase disabled:cursor-not-allowed disabled:opacity-40"
             data-active="true"
           >
-            {pending ? "Generating…" : "Download PDF"}
+            {pending ? "Generating…" : downloadLabel}
           </button>
           {lastFilename ? (
             <span className="font-mono text-[10px] text-led-green">

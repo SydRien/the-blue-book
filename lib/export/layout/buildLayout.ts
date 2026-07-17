@@ -5,6 +5,7 @@ import {
 } from "@/lib/export/fonts/fontResolver";
 import type {
   ExportNode,
+  ExportRole,
   LayoutDocument,
   LayoutLine,
   LayoutPage,
@@ -17,6 +18,17 @@ type LineGroup = {
   role: ExportNode["role"];
   lines: LayoutLine[];
   keepWithNext: boolean;
+};
+
+type RoleGeometry = {
+  xPt: number;
+  widthPt: number;
+  align: "left" | "center";
+  maxUnits: number;
+  spaceBeforePt: number;
+  spaceAfterPt: number;
+  italic?: boolean;
+  centerOverBand?: boolean;
 };
 
 /**
@@ -78,56 +90,95 @@ function wrapText(text: string, maxUnits: number): string[] {
   return lines.length > 0 ? lines : [""];
 }
 
-function roleGeometry(role: ExportNode["role"], profile: PageProfile) {
+function bodyBand(profile: PageProfile) {
+  const leftIn = profile.bodyLeftIn ?? profile.marginLeftPt / PT_PER_IN;
+  const widthIn = profile.bodyWidthIn ?? profile.actionWidthIn;
+  return {
+    xPt: leftIn * PT_PER_IN,
+    widthPt: widthIn * PT_PER_IN,
+    widthIn,
+  };
+}
+
+function roleGeometry(role: ExportRole, profile: PageProfile): RoleGeometry {
   const dialogueX = profile.dialogueLeftIn * PT_PER_IN;
   const dialogueWidth = profile.dialogueWidthIn * PT_PER_IN;
-  // Pitch base is Courier 10 cpi; CJK fullwidth counted as 2 units in wrap.
   const maxUnitsForWidth = (widthIn: number) =>
     Math.floor(widthIn * profile.charsPerInch);
+  const body = bodyBand(profile);
 
   switch (role) {
     case "scene_heading":
-    case "action":
+    case "scene":
       return {
         xPt: profile.marginLeftPt,
         widthPt: profile.actionWidthIn * PT_PER_IN,
-        align: "left" as const,
+        align: "left",
         maxUnits: maxUnitsForWidth(profile.actionWidthIn),
-        spaceBeforePt:
-          role === "scene_heading" ? profile.spaceBeforeScenePt : 0,
-        spaceAfterPt:
-          role === "scene_heading"
-            ? profile.spaceAfterScenePt
-            : profile.spaceAfterActionPt,
+        spaceBeforePt: profile.spaceBeforeScenePt,
+        spaceAfterPt: profile.spaceAfterScenePt,
+      };
+    case "action":
+    case "narration":
+      return {
+        xPt: body.xPt,
+        widthPt: body.widthPt,
+        align: "left",
+        maxUnits: maxUnitsForWidth(body.widthIn),
+        spaceBeforePt: 0,
+        spaceAfterPt: profile.spaceAfterActionPt,
+      };
+    case "stage_direction":
+      return {
+        xPt: body.xPt,
+        widthPt: body.widthPt,
+        align: "left",
+        maxUnits: maxUnitsForWidth(body.widthIn),
+        spaceBeforePt: 0,
+        spaceAfterPt: profile.spaceAfterActionPt,
+        italic: true,
       };
     case "character":
-      // Column band only — per-line X is computed from cue width (see below).
       return {
         xPt: dialogueX,
         widthPt: dialogueWidth,
-        align: "left" as const,
+        align: "left",
         maxUnits: maxUnitsForWidth(profile.dialogueWidthIn),
         spaceBeforePt: 0,
         spaceAfterPt: profile.spaceAfterCharacterPt,
+        centerOverBand: true,
       };
     case "dialogue":
       return {
         xPt: dialogueX,
         widthPt: dialogueWidth,
-        align: "left" as const,
+        align: profile.dialogueAlign,
         maxUnits: maxUnitsForWidth(profile.dialogueWidthIn),
         spaceBeforePt: 0,
         spaceAfterPt: profile.spaceAfterDialoguePt,
+        centerOverBand: profile.dialogueAlign === "center",
+      };
+    // Reserved interactive roles — sensible defaults until schema emits them.
+    case "choice":
+    case "trigger":
+    case "interaction":
+    case "system_note":
+      return {
+        xPt: body.xPt,
+        widthPt: body.widthPt,
+        align: "left",
+        maxUnits: maxUnitsForWidth(body.widthIn),
+        spaceBeforePt: 0,
+        spaceAfterPt: profile.spaceAfterActionPt,
       };
   }
 }
 
 /**
- * Center a character cue over the dialogue column by placing its left edge
- * from measured text width. pdfmake ignores alignment with absolutePosition,
- * so we cannot rely on align:"center".
+ * Center text over the dialogue column by measured width.
+ * pdfmake ignores alignment with absolutePosition.
  */
-function centeredCharacterBox(
+function centeredBandBox(
   text: string,
   profile: PageProfile,
 ): { xPt: number; widthPt: number } {
@@ -146,7 +197,6 @@ function centeredCharacterBox(
 
 function nodeToGroup(node: ExportNode, profile: PageProfile): LineGroup {
   const geometry = roleGeometry(node.role, profile);
-  // Honor authored line breaks, then wrap each paragraph to column width.
   const wrapped = node.text
     .split(/\r?\n/)
     .flatMap((paragraph) => wrapText(paragraph, geometry.maxUnits));
@@ -154,10 +204,9 @@ function nodeToGroup(node: ExportNode, profile: PageProfile): LineGroup {
 
   wrapped.forEach((text, index) => {
     const runs = resolveFontRuns(text, node.language);
-    const box =
-      node.role === "character"
-        ? centeredCharacterBox(text, profile)
-        : { xPt: geometry.xPt, widthPt: geometry.widthPt };
+    const box = geometry.centerOverBand
+      ? centeredBandBox(text, profile)
+      : { xPt: geometry.xPt, widthPt: geometry.widthPt };
 
     lines.push({
       role: node.role,
@@ -170,11 +219,11 @@ function nodeToGroup(node: ExportNode, profile: PageProfile): LineGroup {
       spaceBeforePt: index === 0 ? geometry.spaceBeforePt : 0,
       fontFamily: runs[0]?.fontFamily ?? resolveFont(text, node.language),
       runs,
+      ...(geometry.italic ? { italic: true } : {}),
     });
   });
 
   if (geometry.spaceAfterPt > 0) {
-    const spacerFont = profile.fontFamily;
     lines.push({
       role: node.role,
       text: "",
@@ -184,7 +233,7 @@ function nodeToGroup(node: ExportNode, profile: PageProfile): LineGroup {
       fontSizePt: profile.fontSizePt,
       heightPt: geometry.spaceAfterPt,
       spaceBeforePt: 0,
-      fontFamily: spacerFont,
+      fontFamily: profile.fontFamily,
       runs: [],
     });
   }
@@ -206,7 +255,6 @@ function groupHeight(group: LineGroup): number {
 /**
  * Builds a paginated LayoutDocument from ExportNodes + page profile.
  * Keeps character cues with following dialogue when possible.
- * Page numbers are header metadata — body Y always starts at marginTopPt.
  */
 export function buildLayout(
   title: string,
@@ -269,6 +317,8 @@ export function buildLayout(
     pageSize: profile.pageSize,
     pageWidthPt: profile.pageWidthPt,
     pageHeightPt: profile.pageHeightPt,
+    marginLeftPt: profile.marginLeftPt,
+    marginRightPt: profile.marginRightPt,
     marginTopPt: profile.marginTopPt,
     marginBottomPt: profile.marginBottomPt,
     pageNumberTopPt: profile.pageNumberTopPt,

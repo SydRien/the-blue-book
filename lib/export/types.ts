@@ -1,15 +1,12 @@
 import type { BlueBookDocument, DocumentLanguage } from "@/types/document";
 
-/** Pipeline writing modes currently implemented. */
-export type WritingMode = "screenplay";
+/** Pipeline writing modes. */
+export type WritingMode = "screenplay" | "stage_play" | "interactive";
 
-/** Writer-facing export mode choices (UI); only screenplay is implemented. */
-export type ExportWritingMode =
-  | "screenplay"
-  | "stage_play"
-  | "interactive";
+/** Writer-facing export mode choices (UI). */
+export type ExportWritingMode = WritingMode;
 
-/** Writer-facing format choices (UI); only pdf is implemented. */
+/** Writer-facing format choices (UI). */
 export type ExportFormat = "pdf" | "docx";
 
 /**
@@ -30,11 +27,25 @@ export type TitlePageInfo = {
   date?: string;
 };
 
+/**
+ * Export layout roles.
+ * Screenplay: scene_heading, action, character, dialogue
+ * Stage play: scene, stage_direction, character, dialogue
+ * Interactive: scene, narration, character, dialogue
+ * Reserved (not emitted yet): choice, trigger, interaction, system_note
+ */
 export type ExportRole =
   | "scene_heading"
   | "action"
   | "character"
-  | "dialogue";
+  | "dialogue"
+  | "scene"
+  | "stage_direction"
+  | "narration"
+  | "choice"
+  | "trigger"
+  | "interaction"
+  | "system_note";
 
 export type ExportNode = {
   id: string;
@@ -75,6 +86,15 @@ export type PageProfile = {
   /** Dialogue column left edge from page left (inches), ~2.5" */
   dialogueLeftIn: number;
   dialogueWidthIn: number;
+  /** Dialogue paragraph alignment inside the dialogue band. */
+  dialogueAlign: "left" | "center";
+  /**
+   * Optional left edge for body/direction/narration (inches).
+   * Defaults to marginLeft when omitted (screenplay action).
+   */
+  bodyLeftIn?: number;
+  /** Optional body column width (inches). Defaults to actionWidthIn. */
+  bodyWidthIn?: number;
   spaceBeforeScenePt: number;
   spaceAfterScenePt: number;
   /** Blank line after action / between action paragraphs */
@@ -110,6 +130,8 @@ export type LayoutLine = {
   fontFamily: string;
   /** Per-script spans for mixed-language lines. */
   runs: LayoutTextRun[];
+  /** Stage directions / distinct body lines (adapters honor when set). */
+  italic?: boolean;
 };
 
 export type LayoutPage = {
@@ -143,6 +165,8 @@ export type LayoutDocument = {
   pageSize: PageSizeId;
   pageWidthPt: number;
   pageHeightPt: number;
+  marginLeftPt: number;
+  marginRightPt: number;
   marginTopPt: number;
   marginBottomPt: number;
   pageNumberTopPt: number;

@@ -39,6 +39,7 @@ type PdfTextSpan = {
   text: string;
   font?: string;
   fontSize?: number;
+  italics?: boolean;
 };
 
 type PdfContentItem = {
@@ -46,6 +47,7 @@ type PdfContentItem = {
   stack?: PdfContentItem[];
   fontSize?: number;
   font?: string;
+  italics?: boolean;
   alignment?: "left" | "center" | "right";
   margin?: [number, number, number, number];
   absolutePosition?: { x: number; y: number };
@@ -81,12 +83,13 @@ function runsToPdfText(
   runs: LayoutTextRun[],
   fallbackFont: string,
   fontSize: number,
+  italic?: boolean,
 ): string | PdfTextSpan[] {
   if (runs.length === 0) {
     return "";
   }
 
-  if (runs.length === 1) {
+  if (runs.length === 1 && !italic) {
     return runs[0]!.text;
   }
 
@@ -94,6 +97,7 @@ function runsToPdfText(
     text: run.text,
     font: run.fontFamily || fallbackFont,
     fontSize,
+    ...(italic ? { italics: true } : {}),
   }));
 }
 
@@ -111,13 +115,14 @@ function lineToContent(
   }
 
   const font = line.fontFamily || SCREENPLAY_FONT_FAMILY;
-  const text = runsToPdfText(line.runs, font, line.fontSizePt);
+  const text = runsToPdfText(line.runs, font, line.fontSizePt, line.italic);
 
   return {
     item: {
       text: text === "" ? line.text : text,
       fontSize: line.fontSizePt,
       font,
+      italics: line.italic || undefined,
       alignment: line.align,
       width: line.widthPt,
       margin: [0, 0, 0, 0],

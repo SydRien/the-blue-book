@@ -27,19 +27,28 @@ export const buildTitlePageInfo = defaultTitlePageInfo;
 
 /** True when the selected combo can produce a download today. */
 export function isExportSettingsReady(settings: ExportSettings): boolean {
+  const modeOk =
+    settings.mode === "screenplay" ||
+    settings.mode === "stage_play" ||
+    settings.mode === "interactive";
+
   return (
-    settings.mode === "screenplay" &&
-    settings.format === "pdf" &&
+    modeOk &&
+    (settings.format === "pdf" || settings.format === "docx") &&
     settings.pageSize === "letter"
   );
 }
 
 export function describeExportBlocker(settings: ExportSettings): string | null {
-  if (settings.mode !== "screenplay") {
+  if (
+    settings.mode !== "screenplay" &&
+    settings.mode !== "stage_play" &&
+    settings.mode !== "interactive"
+  ) {
     return "That writing mode is not available yet.";
   }
-  if (settings.format !== "pdf") {
-    return "DOCX export is not available yet.";
+  if (settings.format !== "pdf" && settings.format !== "docx") {
+    return "That file format is not available yet.";
   }
   if (settings.pageSize !== "letter") {
     return "A4 page size is not available yet.";
