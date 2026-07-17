@@ -1,3 +1,7 @@
+"use client";
+
+import { ThemeToggle } from "@/components/Header/ThemeToggle";
+
 type AppHeaderProps = {
   projectName: string;
   documentName: string;
@@ -22,15 +26,7 @@ export function AppHeader({ projectName, documentName }: AppHeaderProps) {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            className="led-dot h-1.5 w-1.5 rounded-full bg-led-orange text-led-orange"
-            aria-hidden
-          />
-          <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
-            Instrument Mode
-          </span>
-        </span>
+        <ThemeToggle />
         <div className="flex items-center gap-1.5" aria-hidden>
           <span className="panel-screw" />
           <span className="panel-screw" />

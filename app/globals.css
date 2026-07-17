@@ -1,23 +1,96 @@
 @import "tailwindcss";
 
-:root {
-  --background: #111111;
-  --foreground: #f2f0eb;
-  --panel: #1a1a1c;
+/*
+  Theme tokens — set via html[data-theme="dark|light"].
+  --bb-* aliases match the theme system naming; existing vars feed Tailwind.
+*/
+
+:root,
+html[data-theme="dark"] {
+  --bb-background: #111111;
+  --bb-panel: #1a1a1c;
+  --bb-panel-hover: #303038;
+  --bb-border: #2e2e34;
+  --bb-text: #f2f0eb;
+  --bb-muted: #8a8a90;
+  --bb-grid: rgba(63, 208, 201, 0.04);
+  --bb-accent-cyan: #3fd0c9;
+  --bb-accent-green: #7dcf6e;
+  --bb-accent-orange: #e89a5b;
+
+  --background: var(--bb-background);
+  --foreground: var(--bb-text);
+  --panel: var(--bb-panel);
   --panel-raised: #222226;
-  --panel-border: #2e2e34;
+  --panel-border: var(--bb-border);
   --panel-inset: #0d0d0f;
-  --muted: #8a8a90;
+  --muted: var(--bb-muted);
   --accent: #3b9eff;
   --accent-soft: #2a6fad;
   --status: #141416;
   --led-blue: #3b9eff;
-  --led-cyan: #3fd0c9;
-  --led-orange: #e89a5b;
-  --led-green: #7dcf6e;
+  --led-cyan: var(--bb-accent-cyan);
+  --led-orange: var(--bb-accent-orange);
+  --led-green: var(--bb-accent-green);
   --module-face: linear-gradient(180deg, #2a2a30 0%, #1c1c20 100%);
   --module-press: linear-gradient(180deg, #18181c 0%, #242428 100%);
-  --grid-line: rgba(63, 208, 201, 0.04);
+  --module-hover: linear-gradient(180deg, #303038 0%, #222226 100%);
+  --grid-line: var(--bb-grid);
+  --screw-face: radial-gradient(circle at 30% 30%, #5a5a62, #2a2a30 70%);
+  --focus-fill: rgba(59, 158, 255, 0.06);
+  --focus-ring: rgba(59, 158, 255, 0.25);
+  --flash-fill: rgba(59, 158, 255, 0.12);
+  --flash-ring: rgba(59, 158, 255, 0.45);
+  --overlay-scrim: rgba(0, 0, 0, 0.6);
+  --shadow-inset-top: rgba(255, 255, 255, 0.06);
+  --shadow-inset-bottom: rgba(0, 0, 0, 0.45);
+  --shadow-drop: rgba(0, 0, 0, 0.4);
+  --knob-face: #f2f0eb;
+  --track-face: #0d0d0f;
+}
+
+html[data-theme="light"] {
+  /* Technical paper / vintage synth manual */
+  --bb-background: #e4e0d6;
+  --bb-panel: #f4f1ea;
+  --bb-panel-hover: #ebe6dc;
+  --bb-border: #c4bdb0;
+  --bb-text: #2c2a26;
+  --bb-muted: #6a655c;
+  --bb-grid: rgba(44, 42, 38, 0.06);
+  --bb-accent-cyan: #1a9e96;
+  --bb-accent-green: #4a9a3f;
+  --bb-accent-orange: #c47a3a;
+
+  --background: var(--bb-background);
+  --foreground: var(--bb-text);
+  --panel: var(--bb-panel);
+  --panel-raised: #faf8f3;
+  --panel-border: var(--bb-border);
+  --panel-inset: #ddd7cb;
+  --muted: var(--bb-muted);
+  --accent: #2a7fd4;
+  --accent-soft: #4a90c8;
+  --status: #d8d2c6;
+  --led-blue: #2a7fd4;
+  --led-cyan: var(--bb-accent-cyan);
+  --led-orange: var(--bb-accent-orange);
+  --led-green: var(--bb-accent-green);
+  --module-face: linear-gradient(180deg, #faf8f3 0%, #e8e2d6 100%);
+  --module-press: linear-gradient(180deg, #dcd5c8 0%, #ebe6dc 100%);
+  --module-hover: linear-gradient(180deg, #fffef9 0%, #ebe6dc 100%);
+  --grid-line: var(--bb-grid);
+  --screw-face: radial-gradient(circle at 30% 30%, #b8b0a2, #8a8478 70%);
+  --focus-fill: rgba(42, 127, 212, 0.08);
+  --focus-ring: rgba(42, 127, 212, 0.35);
+  --flash-fill: rgba(42, 127, 212, 0.14);
+  --flash-ring: rgba(42, 127, 212, 0.45);
+  --overlay-scrim: rgba(44, 42, 38, 0.45);
+  --shadow-inset-top: rgba(255, 255, 255, 0.7);
+  --shadow-inset-bottom: rgba(0, 0, 0, 0.12);
+  --shadow-drop: rgba(0, 0, 0, 0.12);
+  --knob-face: #2c2a26;
+  --track-face: #c4bdb0;
 }
 
 @theme inline {
@@ -61,9 +134,9 @@ body {
 .module-button {
   background: var(--module-face);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
-    0 1px 0 rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 var(--shadow-inset-top),
+    inset 0 -1px 0 var(--shadow-inset-bottom),
+    0 1px 0 var(--shadow-drop);
   transition:
     background 120ms ease,
     box-shadow 120ms ease,
@@ -71,28 +144,82 @@ body {
 }
 
 .module-button:hover {
-  background: linear-gradient(180deg, #303038 0%, #222226 100%);
+  background: var(--module-hover);
 }
 
 .module-button:active,
 .module-button[data-active="true"] {
   background: var(--module-press);
   box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 1px rgba(59, 158, 255, 0.25);
+    inset 0 2px 4px var(--shadow-inset-bottom),
+    inset 0 0 0 1px var(--focus-ring);
   transform: translateY(1px);
 }
 
 .led-dot {
-  box-shadow: 0 0 6px currentColor;
+  /* Off: flat dark bead, no bloom */
+  box-shadow: none;
+  filter: none;
+  background-image: none;
+}
+
+.led-dot[data-lit="true"] {
+  /* On: brighter + soft bloom; centered wash (not offset) so it stays flat */
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in srgb, #ffffff 48%, transparent) 0%,
+    color-mix(in srgb, #ffffff 18%, transparent) 42%,
+    transparent 72%
+  );
+  box-shadow:
+    0 0 8px 1px currentColor,
+    0 0 18px 4px color-mix(in srgb, currentColor 45%, transparent);
+  filter: saturate(1.15) brightness(1.18);
 }
 
 .panel-screw {
   width: 6px;
   height: 6px;
   border-radius: 9999px;
-  background: radial-gradient(circle at 30% 30%, #5a5a62, #2a2a30 70%);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+  background: var(--screw-face);
+  box-shadow: inset 0 0 0 1px var(--shadow-inset-bottom);
+}
+
+/* Hardware theme slider */
+.theme-toggle-track {
+  position: relative;
+  display: inline-block;
+  width: 2.75rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+  background: var(--track-face);
+  border: 1px solid var(--panel-border);
+  box-shadow: inset 0 1px 2px var(--shadow-inset-bottom);
+}
+
+.theme-toggle-knob {
+  position: absolute;
+  top: 50%;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 9999px;
+  background: var(--knob-face);
+  border: 1px solid var(--panel-border);
+  box-shadow:
+    0 1px 2px var(--shadow-drop),
+    inset 0 1px 0 var(--shadow-inset-top);
+  transform: translate(-50%, -50%);
+  transition: left 140ms ease;
+}
+
+.theme-toggle-knob[data-position="left"] {
+  left: 0.2rem;
+  transform: translate(0, -50%);
+}
+
+.theme-toggle-knob[data-position="right"] {
+  left: calc(100% - 0.9rem);
+  transform: translate(0, -50%);
 }
 
 .script-editor-content {
@@ -102,7 +229,7 @@ body {
 .script-editor-content .script-block {
   position: relative;
   margin: 0 0 1.1rem;
-  padding: 0.35rem 0.5rem 0.15rem;
+  padding: 0.15rem 0.5rem 0.15rem;
   border-radius: 2px;
   color: var(--foreground);
   line-height: 1.5;
@@ -110,54 +237,82 @@ body {
   word-break: break-word;
 }
 
-.script-editor-content .script-block::before {
-  display: block;
-  margin-bottom: 0.25rem;
+.script-editor-content .script-block-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.script-editor-content .script-block-label {
   font-family: var(--font-ibm-plex-mono), monospace;
   font-size: 9px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+  color: var(--block-accent, var(--muted));
 }
 
-.script-editor-content .script-block[data-type="scene_heading"]::before {
-  content: "Scene Heading";
-  color: var(--led-blue);
+.script-editor-content .script-block-menu-btn {
+  border: 1px solid var(--panel-border);
+  background: var(--panel-raised);
+  color: var(--muted);
+  font-family: var(--font-ibm-plex-mono), monospace;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 0.35rem;
+  border-radius: 2px;
+  cursor: pointer;
 }
 
-.script-editor-content .script-block[data-type="action"]::before {
-  content: "Action";
-  color: var(--led-cyan);
+.script-editor-content .script-block-menu-btn:hover {
+  color: var(--foreground);
+  border-color: var(--accent-soft);
 }
 
-.script-editor-content .script-block[data-type="character"]::before {
-  content: "Character";
-  color: var(--led-orange);
+.script-editor-content .script-block-content {
+  min-height: 1.2em;
 }
 
-.script-editor-content .script-block[data-type="dialogue"]::before {
-  content: "Dialogue";
-  color: var(--led-green);
-}
-
-.script-editor-content .script-block[data-type="scene_heading"] {
+.script-editor-content .script-block[data-type="scene_heading"] .script-block-content {
   text-transform: uppercase;
 }
 
-.script-editor-content .script-block[data-type="character"] {
+.script-editor-content .script-block[data-type="character"] .script-block-content {
   text-align: center;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-.script-editor-content .script-block[data-type="dialogue"] {
+.script-editor-content .script-block[data-type="dialogue"] .script-block-content {
   text-align: center;
   padding-left: 4rem;
   padding-right: 4rem;
 }
 
+.script-editor-content .script-block[data-type="choice"] .script-block-content,
+.script-editor-content .script-block[data-type="interaction"] .script-block-content,
+.script-editor-content .script-block[data-type="trigger"] .script-block-content {
+  border-left: 2px solid var(--block-accent, var(--led-cyan));
+  padding-left: 0.65rem;
+}
+
+.script-editor-content .script-block[data-type="system_note"] .script-block-content {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .script-editor-content .script-block:focus-within {
-  background: rgba(59, 158, 255, 0.06);
-  box-shadow: inset 0 0 0 1px rgba(59, 158, 255, 0.25);
+  background: var(--focus-fill);
+  box-shadow: inset 0 0 0 1px var(--focus-ring);
+}
+
+.script-editor-content .script-block.script-block-outline-flash {
+  background: var(--flash-fill);
+  box-shadow: inset 0 0 0 1px var(--flash-ring);
+  transition:
+    background 200ms ease,
+    box-shadow 200ms ease;
 }
 
 .ProseMirror {
@@ -166,4 +321,18 @@ body {
 
 .ProseMirror-focused {
   outline: none;
+}
+
+/*
+  Native <select> popups on Windows/macOS often use a light system surface.
+  Force dark option text so choices stay readable in both themes.
+*/
+.bb-native-select {
+  color: var(--foreground);
+  background-color: transparent;
+}
+
+.bb-native-select option {
+  color: #2c2a26;
+  background-color: #faf8f3;
 }

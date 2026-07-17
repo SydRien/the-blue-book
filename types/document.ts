@@ -1,8 +1,25 @@
+/**
+ * Document + block instance schema.
+ * Block *type* catalog lives in lib/blocks (registry + entities).
+ */
+
+/** Classic screenplay types — still used by export formatters. */
 export type ScriptBlockType =
   | "scene_heading"
   | "action"
   | "character"
   | "dialogue";
+
+/** Built-in narrative types including interactive preparation. */
+export type BuiltInBlockTypeId =
+  | ScriptBlockType
+  | "choice"
+  | "interaction"
+  | "trigger"
+  | "system_note";
+
+/** Any block type id: built-in or custom (`custom_<uuid>`). */
+export type BlockTypeId = string;
 
 export type DocumentLanguage = "en" | "zh";
 
@@ -17,7 +34,7 @@ export type BlockMetadata = {
 
 export type DocumentBlock = {
   id: string;
-  type: ScriptBlockType;
+  type: BlockTypeId;
   content: string;
   language: DocumentLanguage;
   style: BlockStyle;
@@ -30,6 +47,10 @@ export type BlueBookDocument = {
   blocks: DocumentBlock[];
 };
 
+/**
+ * @deprecated Prefer block registry (`listBlockDefinitions`).
+ * Kept for compatibility with code that still imports the static list.
+ */
 export const SCRIPT_BLOCK_TYPES: {
   id: ScriptBlockType;
   label: string;
@@ -50,8 +71,12 @@ export const DEFAULT_BLOCK_METADATA: BlockMetadata = {
   export: true,
 };
 
+export function isBlockTypeId(value: unknown): value is BlockTypeId {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 export function createDocumentBlock(
-  type: ScriptBlockType,
+  type: BlockTypeId,
   content = "",
 ): DocumentBlock {
   return {

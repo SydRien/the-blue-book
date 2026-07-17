@@ -1,13 +1,14 @@
 import type { SyncStatus } from "@/lib/storage";
-import type { ScriptBlockType } from "@/types/document";
+import type { BlockTypeId } from "@/types/document";
 
 type StatusBarProps = {
   projectName: string;
   documentName: string;
-  activeType: ScriptBlockType;
+  activeType: BlockTypeId;
   exportVisible: boolean;
   blockCount: number;
   syncStatus: SyncStatus;
+  latestVersionLabel?: string | null;
 };
 
 function syncLabel(status: SyncStatus): string {
@@ -49,6 +50,7 @@ export function StatusBar({
   exportVisible,
   blockCount,
   syncStatus,
+  latestVersionLabel = null,
 }: StatusBarProps) {
   return (
     <footer className="flex h-8 shrink-0 items-center justify-between border-t border-panel-border bg-status px-3">
@@ -56,6 +58,7 @@ export function StatusBar({
         <span className="inline-flex items-center gap-1.5">
           <span
             className={`led-dot h-1.5 w-1.5 rounded-full ${syncLed(syncStatus)}`}
+            data-lit="true"
             aria-hidden
           />
           <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
@@ -66,6 +69,14 @@ export function StatusBar({
         <span className="font-mono text-[10px] tracking-[0.08em] text-muted uppercase">
           {projectName} · {documentName}
         </span>
+        {latestVersionLabel ? (
+          <>
+            <span className="text-panel-border">|</span>
+            <span className="max-w-[12rem] truncate font-mono text-[10px] tracking-[0.08em] text-led-orange uppercase">
+              Latest · {latestVersionLabel}
+            </span>
+          </>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-3">
@@ -82,6 +93,7 @@ export function StatusBar({
                 ? "bg-led-blue text-led-blue"
                 : "bg-[#3a3a42] text-transparent"
             }`}
+            data-lit={exportVisible}
             aria-hidden
           />
           <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
@@ -89,7 +101,7 @@ export function StatusBar({
           </span>
         </span>
         <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
-          Phase 4.5 · Workspace
+          Phase 6.4 · Versions
         </span>
       </div>
     </footer>

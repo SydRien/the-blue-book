@@ -1,7 +1,7 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ScriptEditor,
   type ActiveBlockState,
@@ -12,13 +12,38 @@ import {
   type InspectorSettings,
 } from "@/components/Inspector/InspectorPanel";
 import { ExportPanel } from "@/components/Export/ExportPanel";
+import { StatisticsPanel } from "@/components/Statistics/StatisticsPanel";
+import { CharacterInspector } from "@/components/Characters/CharacterInspector";
+import { CharactersPanel } from "@/components/Characters/CharactersPanel";
+import { OutlinePanel } from "@/components/Outline/OutlinePanel";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
 import { StatusBar } from "@/components/StatusBar/StatusBar";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { VersionHistoryPanel } from "@/components/VersionHistory/VersionHistoryPanel";
+import {
+  LeftRail,
+  type LeftRailTab,
+} from "@/components/Workspace/LeftRail";
+import {
+  countBlocksOfType,
+  createCustomBlockType,
+  deleteCustomBlockType,
+  listAllBlockDefinitions,
+  renameCustomBlockType,
+} from "@/lib/blocks/blockTypeEntities";
+import type { BlockDefinition } from "@/lib/blocks/types";
+import { getCharacterManager } from "@/lib/entities/characters/characterManager";
+import { findCharacterForBlock } from "@/lib/entities/characters/characterUtils";
+import type { CharacterRecord } from "@/lib/entities/characters/types";
+import type { OutlineNode } from "@/lib/outline/types";
+import { scrollEditorToBlock } from "@/lib/outline/scrollToBlock";
 import {
   createBlueBookRepository,
   getStorageBackend,
   type SyncStatus,
 } from "@/lib/storage";
+import { getVersionManager } from "@/lib/versionHistory/versionManager";
+import type { DocumentVersion } from "@/lib/versionHistory/types";
 import {
   createSeedDocument,
   type BlueBookDocument,
@@ -26,13 +51,33 @@ import {
 import type { ProjectWithDocuments } from "@/types/project";
 
 const DEFAULT_ACTIVE_BLOCK: ActiveBlockState = {
+  id: "",
   type: "dialogue",
+  content: "",
   font: "Courier New",
   size: 12,
   exportVisible: true,
 };
 
 const SAVE_DEBOUNCE_MS = 400;
+
+type BlockTypeDialog =
+  | { kind: "create" }
+  | { kind: "rename"; definition: BlockDefinition }
+  | { kind: "delete"; definition: BlockDefinition; usageCount: number }
+  | null;
+
+type CharacterDialog =
+  | { kind: "create" }
+  | { kind: "rename"; character: CharacterRecord }
+  | { kind: "delete"; character: CharacterRecord }
+  | null;
+
+type VersionDialog =
+  | { kind: "create" }
+  | { kind: "restore"; version: DocumentVersion }
+  | { kind: "delete"; version: DocumentVersion }
+  | null;
 
 export function AppShell() {
   const repositoryRef = useRef(createBlueBookRepository());
@@ -49,8 +94,62 @@ export function AppShell() {
     null,
   );
   const [exportOpen, setExportOpen] = useState(false);
+  const [statisticsOpen, setStatisticsOpen] = useState(false);
+  const [leftRailTab, setLeftRailTab] = useState<LeftRailTab>("projects");
+  const [selectedOutlineBlockId, setSelectedOutlineBlockId] = useState<
+    string | null
+  >(null);
+  const [blockTypes, setBlockTypes] = useState<BlockDefinition[]>(() =>
+    listAllBlockDefinitions(),
+  );
+  const [blockTypeDialog, setBlockTypeDialog] = useState<BlockTypeDialog>(null);
+  const [blockTypeDraft, setBlockTypeDraft] = useState("");
+  const [blockTypeError, setBlockTypeError] = useState<string | null>(null);
+  const [blockTypePending, setBlockTypePending] = useState(false);
+  const [characters, setCharacters] = useState<CharacterRecord[]>(() =>
+    getCharacterManager().list(),
+  );
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(
+    null,
+  );
+  const [characterDialog, setCharacterDialog] =
+    useState<CharacterDialog>(null);
+  const [characterDraft, setCharacterDraft] = useState("");
+  const [characterError, setCharacterError] = useState<string | null>(null);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [versions, setVersions] = useState<DocumentVersion[]>([]);
+  const [versionDialog, setVersionDialog] = useState<VersionDialog>(null);
+  const [versionDraft, setVersionDraft] = useState("");
+  const [versionError, setVersionError] = useState<string | null>(null);
+  const [editorEpoch, setEditorEpoch] = useState(0);
   const skipNextSaveRef = useRef(true);
   const isLocalOnly = getStorageBackend() === "local";
+
+  const refreshBlockTypes = useCallback(() => {
+    setBlockTypes(listAllBlockDefinitions());
+  }, []);
+
+  const refreshCharacters = useCallback(() => {
+    setCharacters(getCharacterManager().list());
+  }, []);
+
+  const refreshVersions = useCallback((documentId: string | null) => {
+    if (!documentId) {
+      setVersions([]);
+      return;
+    }
+    setVersions(getVersionManager().list(documentId));
+  }, []);
+
+  const selectedCharacter = useMemo(
+    () =>
+      selectedCharacterId
+        ? (characters.find((item) => item.id === selectedCharacterId) ?? null)
+        : null,
+    [characters, selectedCharacterId],
+  );
+
+  const latestVersionLabel = versions[0]?.label ?? null;
 
   const activeProject =
     projects.find((project) => project.id === activeProjectId) ?? null;
@@ -219,6 +318,9 @@ export function AppShell() {
     setSyncStatus("loading");
     setActiveProjectId(projectId);
     setActiveDocumentId(documentId);
+    setSelectedOutlineBlockId(null);
+    setSelectedCharacterId(null);
+    refreshVersions(documentId);
 
     try {
       const loaded = await repositoryRef.current.loadDocument(
@@ -227,10 +329,12 @@ export function AppShell() {
       );
       skipNextSaveRef.current = true;
       setDocument(loaded ?? createSeedDocument());
+      setEditorEpoch((value) => value + 1);
       setSyncStatus(isLocalOnly ? "saved-local" : "synced");
     } catch {
       skipNextSaveRef.current = true;
       setDocument(createSeedDocument());
+      setEditorEpoch((value) => value + 1);
       setSyncStatus("sync-error");
     }
   }
@@ -324,12 +428,13 @@ export function AppShell() {
   }
 
   function handleInspectorChange(next: InspectorSettings) {
-    setActiveBlock({
+    setActiveBlock((current) => ({
+      ...current,
       type: next.type,
       font: next.font,
       size: next.size,
       exportVisible: next.exportVisible,
-    });
+    }));
 
     if (!editor) {
       return;
@@ -351,6 +456,239 @@ export function AppShell() {
       .run();
   }
 
+  function reassignBlockTypeInEditor(fromType: string, toType: string) {
+    if (!editor) {
+      return;
+    }
+
+    const { state } = editor;
+    const { tr } = state;
+    let modified = false;
+
+    state.doc.descendants((node, pos) => {
+      if (node.type.name === "scriptBlock" && node.attrs.type === fromType) {
+        tr.setNodeMarkup(pos, undefined, {
+          ...node.attrs,
+          type: toType,
+        });
+        modified = true;
+      }
+    });
+
+    if (modified) {
+      editor.view.dispatch(tr);
+    }
+  }
+
+  function openCreateBlockType() {
+    setBlockTypeDraft("Camera Note");
+    setBlockTypeError(null);
+    setBlockTypeDialog({ kind: "create" });
+  }
+
+  function openRenameBlockType(definition: BlockDefinition) {
+    setBlockTypeDraft(definition.name);
+    setBlockTypeError(null);
+    setBlockTypeDialog({ kind: "rename", definition });
+  }
+
+  function openDeleteBlockType(definition: BlockDefinition) {
+    const usageCount = countBlocksOfType(
+      document?.blocks ?? [],
+      definition.id,
+    );
+    setBlockTypeError(null);
+    setBlockTypeDialog({ kind: "delete", definition, usageCount });
+  }
+
+  function confirmBlockTypeDialog() {
+    if (!blockTypeDialog) {
+      return;
+    }
+
+    setBlockTypePending(true);
+    setBlockTypeError(null);
+
+    try {
+      switch (blockTypeDialog.kind) {
+        case "create": {
+          const name = blockTypeDraft.trim();
+          if (!name) {
+            setBlockTypeError("Name is required");
+            return;
+          }
+          createCustomBlockType(name);
+          refreshBlockTypes();
+          break;
+        }
+        case "rename": {
+          const name = blockTypeDraft.trim();
+          if (!name) {
+            setBlockTypeError("Name is required");
+            return;
+          }
+          renameCustomBlockType(blockTypeDialog.definition.id, name);
+          refreshBlockTypes();
+          break;
+        }
+        case "delete": {
+          const { definition } = blockTypeDialog;
+          reassignBlockTypeInEditor(definition.id, "action");
+          if (document) {
+            setDocument({
+              ...document,
+              blocks: document.blocks.map((block) =>
+                block.type === definition.id
+                  ? { ...block, type: "action" }
+                  : block,
+              ),
+            });
+          }
+          if (activeBlock.type === definition.id) {
+            setActiveBlock((current) => ({ ...current, type: "action" }));
+          }
+          deleteCustomBlockType(definition.id);
+          refreshBlockTypes();
+          break;
+        }
+      }
+      setBlockTypeDialog(null);
+    } catch (error) {
+      setBlockTypeError(
+        error instanceof Error ? error.message : "Operation failed",
+      );
+    } finally {
+      setBlockTypePending(false);
+    }
+  }
+
+  function handleOutlineSelect(node: OutlineNode) {
+    setSelectedOutlineBlockId(node.sourceBlockId);
+    setSelectedCharacterId(null);
+    scrollEditorToBlock(editor, node.sourceBlockId);
+  }
+
+  function confirmCharacterDialog() {
+    if (!characterDialog) {
+      return;
+    }
+    setCharacterError(null);
+    const manager = getCharacterManager();
+
+    try {
+      switch (characterDialog.kind) {
+        case "create": {
+          const name = characterDraft.trim();
+          if (!name) {
+            setCharacterError("Name is required");
+            return;
+          }
+          const created = manager.create({ name });
+          refreshCharacters();
+          setSelectedCharacterId(created.id);
+          setLeftRailTab("characters");
+          break;
+        }
+        case "rename": {
+          const name = characterDraft.trim();
+          if (!name) {
+            setCharacterError("Name is required");
+            return;
+          }
+          manager.rename(characterDialog.character.id, name);
+          refreshCharacters();
+          break;
+        }
+        case "delete": {
+          manager.delete(characterDialog.character.id);
+          if (selectedCharacterId === characterDialog.character.id) {
+            setSelectedCharacterId(null);
+          }
+          refreshCharacters();
+          break;
+        }
+      }
+      setCharacterDialog(null);
+    } catch (error) {
+      setCharacterError(
+        error instanceof Error ? error.message : "Operation failed",
+      );
+    }
+  }
+
+  function handleCharacterFieldChange(patch: Partial<CharacterRecord>) {
+    if (!selectedCharacterId) {
+      return;
+    }
+    const manager = getCharacterManager();
+    if (patch.name !== undefined) {
+      manager.rename(selectedCharacterId, patch.name);
+    }
+    manager.update(selectedCharacterId, {
+      role: patch.role,
+      description: patch.description,
+      notes: patch.notes,
+      color: patch.color,
+      aliases: patch.aliases,
+    });
+    refreshCharacters();
+  }
+
+  function openVersionHistory(documentId: string) {
+    if (documentId !== activeDocumentId) {
+      return;
+    }
+    refreshVersions(documentId);
+    setVersionHistoryOpen(true);
+  }
+
+  function confirmVersionDialog() {
+    if (!versionDialog || !document) {
+      return;
+    }
+    setVersionError(null);
+    const manager = getVersionManager();
+
+    try {
+      switch (versionDialog.kind) {
+        case "create": {
+          manager.createSnapshot(document, versionDraft.trim() || undefined);
+          refreshVersions(document.id);
+          break;
+        }
+        case "restore": {
+          const restored = manager.restore(versionDialog.version.id);
+          skipNextSaveRef.current = false;
+          setDocument(restored);
+          setEditorEpoch((value) => value + 1);
+          setVersionHistoryOpen(false);
+          break;
+        }
+        case "delete": {
+          manager.delete(versionDialog.version.id);
+          refreshVersions(document.id);
+          break;
+        }
+      }
+      setVersionDialog(null);
+    } catch (error) {
+      setVersionError(
+        error instanceof Error ? error.message : "Operation failed",
+      );
+    }
+  }
+
+  useEffect(() => {
+    if (activeDocumentId) {
+      refreshVersions(activeDocumentId);
+    }
+  }, [activeDocumentId, refreshVersions]);
+
+  const linkedForActiveBlock =
+    activeBlock.type === "character" && activeBlock.id
+      ? findCharacterForBlock(characters, activeBlock.id)
+      : null;
+
   return (
     <div className="flex h-full flex-col">
       <AppHeader
@@ -358,30 +696,80 @@ export function AppShell() {
         documentName={activeDocumentSummary?.title ?? document?.title ?? "—"}
       />
       <div className="flex min-h-0 flex-1">
-        <Sidebar
-          projects={projects}
-          activeProjectId={activeProjectId}
-          activeDocumentId={activeDocumentId}
-          onSelectDocument={handleSelectDocument}
-          onCreateProject={handleCreateProject}
-          onCreateDocument={handleCreateDocument}
-          onRenameProject={handleRenameProject}
-          onDeleteProject={handleDeleteProject}
-          onRenameDocument={handleRenameDocument}
-          onDeleteDocument={handleDeleteDocument}
-          creatingProject={creatingProject}
-          creatingDocumentId={creatingDocumentId}
+        <LeftRail
+          tab={leftRailTab}
+          onTabChange={(tab) => {
+            setLeftRailTab(tab);
+            if (tab !== "characters") {
+              setSelectedCharacterId(null);
+            }
+          }}
+          projects={
+            <Sidebar
+              embedded
+              projects={projects}
+              activeProjectId={activeProjectId}
+              activeDocumentId={activeDocumentId}
+              onSelectDocument={handleSelectDocument}
+              onCreateProject={handleCreateProject}
+              onCreateDocument={handleCreateDocument}
+              onRenameProject={handleRenameProject}
+              onDeleteProject={handleDeleteProject}
+              onRenameDocument={handleRenameDocument}
+              onDeleteDocument={handleDeleteDocument}
+              onOpenVersionHistory={openVersionHistory}
+              creatingProject={creatingProject}
+              creatingDocumentId={creatingDocumentId}
+            />
+          }
+          outline={
+            <OutlinePanel
+              document={document}
+              selectedSourceBlockId={selectedOutlineBlockId}
+              onSelectNode={handleOutlineSelect}
+            />
+          }
+          characters={
+            <CharactersPanel
+              characters={characters}
+              selectedId={selectedCharacterId}
+              onSelect={(character) => {
+                setSelectedCharacterId(character.id);
+              }}
+              onCreate={() => {
+                setCharacterDraft("Jin Wen Gong");
+                setCharacterError(null);
+                setCharacterDialog({ kind: "create" });
+              }}
+              onRename={(character) => {
+                setCharacterDraft(character.name);
+                setCharacterError(null);
+                setCharacterDialog({ kind: "rename", character });
+              }}
+              onDelete={(character) => {
+                setCharacterError(null);
+                setCharacterDialog({ kind: "delete", character });
+              }}
+            />
+          }
         />
         {document && activeDocumentId ? (
           <ScriptEditor
-            key={activeDocumentId}
+            key={`${activeDocumentId}-${editorEpoch}`}
             document={document}
             documentName={activeDocumentSummary?.title ?? document.title}
+            blockTypes={blockTypes}
             onDocumentChange={setDocument}
             onActiveBlockChange={setActiveBlock}
             onEditorReady={setEditor}
             activeType={activeBlock.type}
             onOpenExport={() => setExportOpen(true)}
+            onOpenStatistics={() => setStatisticsOpen(true)}
+            onOpenSaveVersion={() => {
+              setVersionDraft("");
+              setVersionError(null);
+              setVersionDialog({ kind: "create" });
+            }}
           />
         ) : (
           <section className="flex min-w-0 flex-1 items-center justify-center bg-background">
@@ -397,15 +785,70 @@ export function AppShell() {
             </div>
           </section>
         )}
-        <InspectorPanel
-          settings={{
-            type: activeBlock.type,
-            font: activeBlock.font,
-            size: activeBlock.size,
-            exportVisible: activeBlock.exportVisible,
-          }}
-          onChange={handleInspectorChange}
-        />
+        {selectedCharacter ? (
+          <CharacterInspector
+            character={selectedCharacter}
+            document={document}
+            onChange={handleCharacterFieldChange}
+            onJumpToBlock={(blockId) => {
+              scrollEditorToBlock(editor, blockId);
+            }}
+            onClose={() => setSelectedCharacterId(null)}
+          />
+        ) : (
+          <InspectorPanel
+            settings={{
+              type: activeBlock.type,
+              font: activeBlock.font,
+              size: activeBlock.size,
+              exportVisible: activeBlock.exportVisible,
+            }}
+            blockTypes={blockTypes}
+            onChange={handleInspectorChange}
+            onCreateBlockType={openCreateBlockType}
+            onRenameBlockType={openRenameBlockType}
+            onDeleteBlockType={openDeleteBlockType}
+            entityLink={
+              activeBlock.type === "character" && activeBlock.id
+                ? {
+                    blockId: activeBlock.id,
+                    cueText: activeBlock.content,
+                    linked: linkedForActiveBlock,
+                    characters,
+                    onCreateFromCue: () => {
+                      const name =
+                        activeBlock.content.trim() || "New Character";
+                      const created = getCharacterManager().create({ name });
+                      getCharacterManager().linkBlock(
+                        created.id,
+                        activeBlock.id,
+                      );
+                      refreshCharacters();
+                      setSelectedCharacterId(created.id);
+                      setLeftRailTab("characters");
+                    },
+                    onLink: (characterId) => {
+                      getCharacterManager().linkBlock(
+                        characterId,
+                        activeBlock.id,
+                      );
+                      refreshCharacters();
+                    },
+                    onUnlink: () => {
+                      if (!linkedForActiveBlock) {
+                        return;
+                      }
+                      getCharacterManager().unlinkBlock(
+                        linkedForActiveBlock.id,
+                        activeBlock.id,
+                      );
+                      refreshCharacters();
+                    },
+                  }
+                : null
+            }
+          />
+        )}
       </div>
       <StatusBar
         projectName={activeProject?.title ?? "No Project"}
@@ -414,14 +857,174 @@ export function AppShell() {
         exportVisible={activeBlock.exportVisible}
         blockCount={document?.blocks.length ?? 0}
         syncStatus={syncStatus}
+        latestVersionLabel={latestVersionLabel}
       />
       {document ? (
-        <ExportPanel
-          document={document}
-          open={exportOpen}
-          onClose={() => setExportOpen(false)}
-        />
+        <>
+          <ExportPanel
+            document={document}
+            open={exportOpen}
+            onClose={() => setExportOpen(false)}
+          />
+          <StatisticsPanel
+            document={document}
+            open={statisticsOpen}
+            onClose={() => setStatisticsOpen(false)}
+          />
+          <VersionHistoryPanel
+            open={versionHistoryOpen}
+            documentTitle={activeDocumentSummary?.title ?? document.title}
+            versions={versions}
+            onClose={() => setVersionHistoryOpen(false)}
+            onCreateSnapshot={() => {
+              setVersionDraft("");
+              setVersionError(null);
+              setVersionDialog({ kind: "create" });
+            }}
+            onRestore={(version) => {
+              setVersionError(null);
+              setVersionDialog({ kind: "restore", version });
+            }}
+            onDelete={(version) => {
+              setVersionError(null);
+              setVersionDialog({ kind: "delete", version });
+            }}
+          />
+        </>
       ) : null}
+
+      <ConfirmDialog
+        open={blockTypeDialog?.kind === "create"}
+        title="New Block Type"
+        message="Create a custom narrative block type."
+        mode="prompt"
+        confirmLabel="Create"
+        promptValue={blockTypeDraft}
+        promptPlaceholder="Camera Note"
+        pending={blockTypePending}
+        error={blockTypeError}
+        onPromptChange={setBlockTypeDraft}
+        onConfirm={confirmBlockTypeDialog}
+        onCancel={() => setBlockTypeDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={blockTypeDialog?.kind === "rename"}
+        title="Rename Block Type"
+        message="Update the display name for this custom type."
+        mode="prompt"
+        confirmLabel="Rename"
+        promptValue={blockTypeDraft}
+        pending={blockTypePending}
+        error={blockTypeError}
+        onPromptChange={setBlockTypeDraft}
+        onConfirm={confirmBlockTypeDialog}
+        onCancel={() => setBlockTypeDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={blockTypeDialog?.kind === "delete"}
+        title="Delete Block Type"
+        message={
+          blockTypeDialog?.kind === "delete"
+            ? blockTypeDialog.usageCount > 0
+              ? `Delete “${blockTypeDialog.definition.name}”? ${blockTypeDialog.usageCount} block(s) will become Action.`
+              : `Permanently delete “${blockTypeDialog.definition.name}”?`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        pending={blockTypePending}
+        error={blockTypeError}
+        onConfirm={confirmBlockTypeDialog}
+        onCancel={() => setBlockTypeDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={characterDialog?.kind === "create"}
+        title="New Character"
+        message="Create a character entity."
+        mode="prompt"
+        confirmLabel="Create"
+        promptValue={characterDraft}
+        promptPlaceholder="Jin Wen Gong"
+        error={characterError}
+        onPromptChange={setCharacterDraft}
+        onConfirm={confirmCharacterDialog}
+        onCancel={() => setCharacterDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={characterDialog?.kind === "rename"}
+        title="Rename Character"
+        message="Update the character name."
+        mode="prompt"
+        confirmLabel="Rename"
+        promptValue={characterDraft}
+        error={characterError}
+        onPromptChange={setCharacterDraft}
+        onConfirm={confirmCharacterDialog}
+        onCancel={() => setCharacterDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={characterDialog?.kind === "delete"}
+        title="Delete Character"
+        message={
+          characterDialog?.kind === "delete"
+            ? `Permanently delete “${characterDialog.character.name}”? Links will be removed.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        error={characterError}
+        onConfirm={confirmCharacterDialog}
+        onCancel={() => setCharacterDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={versionDialog?.kind === "create"}
+        title="Save Version"
+        message="Optional label for this snapshot."
+        mode="prompt"
+        confirmLabel="Save"
+        promptValue={versionDraft}
+        promptPlaceholder="Final dialogue revision"
+        error={versionError}
+        onPromptChange={setVersionDraft}
+        onConfirm={confirmVersionDialog}
+        onCancel={() => setVersionDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={versionDialog?.kind === "restore"}
+        title="Restore Version"
+        message={
+          versionDialog?.kind === "restore"
+            ? `Restore “${versionDialog.version.label}”? Current unsaved editor state will be replaced (auto-save will follow).`
+            : ""
+        }
+        confirmLabel="Restore"
+        danger
+        error={versionError}
+        onConfirm={confirmVersionDialog}
+        onCancel={() => setVersionDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={versionDialog?.kind === "delete"}
+        title="Delete Version"
+        message={
+          versionDialog?.kind === "delete"
+            ? `Permanently delete snapshot “${versionDialog.version.label}”?`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        error={versionError}
+        onConfirm={confirmVersionDialog}
+        onCancel={() => setVersionDialog(null)}
+      />
     </div>
   );
 }

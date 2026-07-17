@@ -2,10 +2,10 @@ import type { JSONContent } from "@tiptap/core";
 import {
   DEFAULT_BLOCK_METADATA,
   DEFAULT_BLOCK_STYLE,
+  isBlockTypeId,
   type BlueBookDocument,
   type DocumentBlock,
   type DocumentLanguage,
-  type ScriptBlockType,
 } from "@/types/document";
 
 function extractText(node: JSONContent): string {
@@ -14,15 +14,6 @@ function extractText(node: JSONContent): string {
   }
 
   return (node.content ?? []).map(extractText).join("");
-}
-
-function isScriptBlockType(value: unknown): value is ScriptBlockType {
-  return (
-    value === "scene_heading" ||
-    value === "action" ||
-    value === "character" ||
-    value === "dialogue"
-  );
 }
 
 export function documentToTiptap(document: BlueBookDocument): JSONContent {
@@ -83,7 +74,7 @@ export function tiptapToBlocks(doc: JSONContent): DocumentBlock[] {
           typeof attrs.id === "string" && attrs.id.length > 0
             ? attrs.id
             : crypto.randomUUID(),
-        type: isScriptBlockType(attrs.type) ? attrs.type : "action",
+        type: isBlockTypeId(attrs.type) ? attrs.type.trim() : "action",
         content: extractText(node),
         language: (attrs.language === "zh" ? "zh" : "en") as DocumentLanguage,
         style,

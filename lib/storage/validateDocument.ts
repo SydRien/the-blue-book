@@ -1,20 +1,11 @@
 import {
   DEFAULT_BLOCK_METADATA,
   DEFAULT_BLOCK_STYLE,
+  isBlockTypeId,
   type BlueBookDocument,
   type DocumentBlock,
   type DocumentLanguage,
-  type ScriptBlockType,
 } from "@/types/document";
-
-function isScriptBlockType(value: unknown): value is ScriptBlockType {
-  return (
-    value === "scene_heading" ||
-    value === "action" ||
-    value === "character" ||
-    value === "dialogue"
-  );
-}
 
 function isLanguage(value: unknown): value is DocumentLanguage {
   return value === "en" || value === "zh";
@@ -31,7 +22,7 @@ function normalizeBlock(value: unknown): DocumentBlock | null {
     return null;
   }
 
-  if (!isScriptBlockType(block.type)) {
+  if (!isBlockTypeId(block.type)) {
     return null;
   }
 
@@ -65,7 +56,7 @@ function normalizeBlock(value: unknown): DocumentBlock | null {
 
   return {
     id: block.id,
-    type: block.type,
+    type: block.type.trim(),
     content: block.content,
     language: isLanguage(block.language) ? block.language : "en",
     style,

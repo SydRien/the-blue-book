@@ -1,12 +1,15 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { BlockTypesPanel } from "@/components/Blocks/BlockTypesPanel";
+import { EntityLinkSection } from "@/components/Characters/EntityLinkSection";
+import type { BlockDefinition } from "@/lib/blocks/types";
+import type { CharacterRecord } from "@/lib/entities/characters/types";
 import { FONT_OPTIONS, SIZE_OPTIONS } from "@/lib/mock-data";
-import {
-  SCRIPT_BLOCK_TYPES,
-  type ScriptBlockType,
-} from "@/types/document";
+import type { BlockTypeId } from "@/types/document";
 
 export type InspectorSettings = {
-  type: ScriptBlockType;
+  type: BlockTypeId;
   font: string;
   size: number;
   exportVisible: boolean;
@@ -14,7 +17,21 @@ export type InspectorSettings = {
 
 type InspectorPanelProps = {
   settings: InspectorSettings;
+  blockTypes: BlockDefinition[];
   onChange: (next: InspectorSettings) => void;
+  onCreateBlockType: () => void;
+  onRenameBlockType: (definition: BlockDefinition) => void;
+  onDeleteBlockType: (definition: BlockDefinition) => void;
+  /** Entity link — only when active block is a character cue. */
+  entityLink?: {
+    blockId: string;
+    cueText: string;
+    linked: CharacterRecord | null;
+    characters: CharacterRecord[];
+    onCreateFromCue: () => void;
+    onLink: (characterId: string) => void;
+    onUnlink: () => void;
+  } | null;
 };
 
 function FieldLabel({ children }: { children: ReactNode }) {
@@ -25,7 +42,15 @@ function FieldLabel({ children }: { children: ReactNode }) {
   );
 }
 
-export function InspectorPanel({ settings, onChange }: InspectorPanelProps) {
+export function InspectorPanel({
+  settings,
+  blockTypes,
+  onChange,
+  onCreateBlockType,
+  onRenameBlockType,
+  onDeleteBlockType,
+  entityLink = null,
+}: InspectorPanelProps) {
   return (
     <aside className="flex w-64 shrink-0 flex-col border-l border-panel-border bg-panel">
       <div className="flex items-center justify-between border-b border-panel-border px-3 py-2">
@@ -43,18 +68,18 @@ export function InspectorPanel({ settings, onChange }: InspectorPanelProps) {
           <FieldLabel>Type</FieldLabel>
           <div className="rounded-sm border border-panel-border bg-panel-inset p-1">
             <select
-              className="w-full bg-transparent px-2 py-1.5 font-mono text-xs text-foreground outline-none"
+              className="bb-native-select w-full bg-transparent px-2 py-1.5 font-mono text-xs outline-none"
               value={settings.type}
               onChange={(event) =>
                 onChange({
                   ...settings,
-                  type: event.target.value as ScriptBlockType,
+                  type: event.target.value,
                 })
               }
             >
-              {SCRIPT_BLOCK_TYPES.map((block) => (
+              {blockTypes.map((block) => (
                 <option key={block.id} value={block.id}>
-                  {block.label}
+                  {block.name}
                 </option>
               ))}
             </select>
@@ -65,7 +90,7 @@ export function InspectorPanel({ settings, onChange }: InspectorPanelProps) {
           <FieldLabel>Font</FieldLabel>
           <div className="rounded-sm border border-panel-border bg-panel-inset p-1">
             <select
-              className="w-full bg-transparent px-2 py-1.5 font-mono text-xs text-foreground outline-none"
+              className="bb-native-select w-full bg-transparent px-2 py-1.5 font-mono text-xs outline-none"
               value={settings.font}
               onChange={(event) =>
                 onChange({ ...settings, font: event.target.value })
@@ -122,14 +147,24 @@ export function InspectorPanel({ settings, onChange }: InspectorPanelProps) {
                   ? "bg-led-green text-led-green"
                   : "bg-[#3a3a42] text-transparent"
               }`}
+              data-lit={settings.exportVisible}
               aria-hidden
             />
           </button>
         </div>
 
+        {entityLink ? <EntityLinkSection {...entityLink} /> : null}
+
+        <BlockTypesPanel
+          definitions={blockTypes}
+          onCreate={onCreateBlockType}
+          onRename={onRenameBlockType}
+          onDelete={onDeleteBlockType}
+        />
+
         <div className="rounded-sm border border-panel-border bg-panel-raised px-3 py-2">
           <p className="font-mono text-[9px] leading-relaxed tracking-[0.08em] text-muted uppercase">
-            Writes to structured block attrs in memory.
+            Custom types are local · shared CRUD entity layer
           </p>
         </div>
       </div>

@@ -1,16 +1,18 @@
 import { mergeAttributes, Node } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
+import { ScriptBlockView } from "@/components/Editor/ScriptBlockView";
 import {
   DEFAULT_BLOCK_METADATA,
   DEFAULT_BLOCK_STYLE,
   type BlockMetadata,
   type BlockStyle,
+  type BlockTypeId,
   type DocumentLanguage,
-  type ScriptBlockType,
 } from "@/types/document";
 
 export type ScriptBlockAttrs = {
   id: string;
-  type: ScriptBlockType;
+  type: BlockTypeId;
   language: DocumentLanguage;
   style: BlockStyle;
   metadata: BlockMetadata;
@@ -19,15 +21,17 @@ export type ScriptBlockAttrs = {
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     scriptBlock: {
-      setScriptBlockType: (type: ScriptBlockType) => ReturnType;
+      setScriptBlockType: (type: BlockTypeId) => ReturnType;
       updateScriptBlockAttrs: (
         attrs: Partial<ScriptBlockAttrs>,
       ) => ReturnType;
+      deleteScriptBlock: () => ReturnType;
+      renameScriptBlockContent: (content: string) => ReturnType;
     };
   }
 }
 
-function createAttrs(type: ScriptBlockType): ScriptBlockAttrs {
+function createAttrs(type: BlockTypeId): ScriptBlockAttrs {
   return {
     id: crypto.randomUUID(),
     type,
@@ -35,6 +39,18 @@ function createAttrs(type: ScriptBlockType): ScriptBlockAttrs {
     style: { ...DEFAULT_BLOCK_STYLE },
     metadata: { ...DEFAULT_BLOCK_METADATA },
   };
+}
+
+function findScriptBlockDepth($from: {
+  depth: number;
+  node: (depth: number) => { type: { name: string } };
+}): number | null {
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    if ($from.node(depth).type.name === "scriptBlock") {
+      return depth;
+    }
+  }
+  return null;
 }
 
 export const ScriptBlock = Node.create({
@@ -53,7 +69,7 @@ export const ScriptBlock = Node.create({
         }),
       },
       type: {
-        default: "action" satisfies ScriptBlockType,
+        default: "action" satisfies BlockTypeId,
         parseHTML: (element) =>
           element.getAttribute("data-type") ?? "action",
         renderHTML: (attributes) => ({
@@ -95,17 +111,18 @@ export const ScriptBlock = Node.create({
     ];
   },
 
+  addNodeView() {
+    return ReactNodeViewRenderer(ScriptBlockView);
+  },
+
   addCommands() {
     return {
       setScriptBlockType:
         (type) =>
         ({ commands, state }) => {
-          const { $from } = state.selection;
-
-          for (let depth = $from.depth; depth > 0; depth -= 1) {
-            if ($from.node(depth).type.name === "scriptBlock") {
-              return commands.updateAttributes("scriptBlock", { type });
-            }
+          const depth = findScriptBlockDepth(state.selection.$from);
+          if (depth !== null) {
+            return commands.updateAttributes("scriptBlock", { type });
           }
 
           return commands.insertContent({
@@ -117,17 +134,69 @@ export const ScriptBlock = Node.create({
       updateScriptBlockAttrs:
         (attrs) =>
         ({ commands, state }) => {
-          const { $from } = state.selection;
+          const depth = findScriptBlockDepth(state.selection.$from);
+          if (depth === null) {
+            return false;
+          }
+          return commands.updateAttributes("scriptBlock", attrs);
+        },
 
-          for (let depth = $from.depth; depth > 0; depth -= 1) {
-            if ($from.node(depth).type.name === "scriptBlock") {
-              return commands.updateAttributes("scriptBlock", attrs);
-            }
+      deleteScriptBlock:
+        () =>
+        ({ state, dispatch, tr }) => {
+          const { $from } = state.selection;
+          const depth = findScriptBlockDepth($from);
+          if (depth === null) {
+            return false;
           }
 
-          return false;
+          const from = $from.before(depth);
+          const to = $from.after(depth);
+          const docChildCount = state.doc.childCount;
+
+          // Keep at least one block in the document.
+          if (docChildCount <= 1) {
+            if (dispatch) {
+              const empty = state.schema.nodes.scriptBlock!.create(
+                createAttrs("action"),
+              );
+              dispatch(
+                tr.replaceWith(from, to, empty).scrollIntoView(),
+              );
+            }
+            return true;
+          }
+
+          if (dispatch) {
+            dispatch(tr.delete(from, to).scrollIntoView());
+          }
+          return true;
+        },
+
+      renameScriptBlockContent:
+        (content) =>
+        ({ state, dispatch, tr }) => {
+          const { $from } = state.selection;
+          const depth = findScriptBlockDepth($from);
+          if (depth === null) {
+            return false;
+          }
+
+          const from = $from.start(depth);
+          const to = $from.end(depth);
+          if (dispatch) {
+            const textNode =
+              content.length > 0
+                ? state.schema.text(content)
+                : null;
+            if (textNode) {
+              dispatch(tr.replaceWith(from, to, textNode).scrollIntoView());
+            } else {
+              dispatch(tr.delete(from, to).scrollIntoView());
+            }
+          }
+          return true;
         },
     };
   },
-
 });

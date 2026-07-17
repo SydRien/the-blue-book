@@ -316,6 +316,7 @@ export function ExportPanel({ document, open, onClose }: ExportPanelProps) {
                     ? "bg-led-green text-led-green"
                     : "bg-[#3a3a42] text-[#3a3a42]"
                 }`}
+                data-lit={settings.includeTitlePage}
                 aria-hidden
               />
             </button>

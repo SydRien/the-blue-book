@@ -14,8 +14,11 @@ type SidebarProps = {
   onDeleteProject: (projectId: string) => Promise<void>;
   onRenameDocument: (documentId: string, title: string) => Promise<void>;
   onDeleteDocument: (documentId: string) => Promise<void>;
+  onOpenVersionHistory?: (documentId: string) => void;
   creatingProject?: boolean;
   creatingDocumentId?: string | null;
+  /** When true, omit outer aside chrome (parent LeftRail provides shell). */
+  embedded?: boolean;
 };
 
 type DialogState =
@@ -46,8 +49,10 @@ export function Sidebar({
   onDeleteProject,
   onRenameDocument,
   onDeleteDocument,
+  onOpenVersionHistory,
   creatingProject = false,
   creatingDocumentId = null,
+  embedded = false,
 }: SidebarProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -140,17 +145,27 @@ export function Sidebar({
   const isRenameDialog =
     dialog?.kind === "project-rename" || dialog?.kind === "document-rename";
 
+  const Shell = embedded ? "div" : "aside";
+
   return (
-    <aside className="relative flex w-60 shrink-0 flex-col border-r border-panel-border bg-panel">
-      <div className="flex items-center justify-between border-b border-panel-border px-3 py-2">
-        <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
-          Projects
-        </p>
-        <div className="flex items-center gap-1.5">
-          <span className="panel-screw" aria-hidden />
-          <span className="panel-screw" aria-hidden />
+    <Shell
+      className={
+        embedded
+          ? "relative flex min-h-0 flex-1 flex-col"
+          : "relative flex w-60 shrink-0 flex-col border-r border-panel-border bg-panel"
+      }
+    >
+      {!embedded ? (
+        <div className="flex items-center justify-between border-b border-panel-border px-3 py-2">
+          <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
+            Projects
+          </p>
+          <div className="flex items-center gap-1.5">
+            <span className="panel-screw" aria-hidden />
+            <span className="panel-screw" aria-hidden />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="border-b border-panel-border px-2 py-2">
         <button
@@ -185,6 +200,7 @@ export function Sidebar({
                           ? "bg-led-cyan text-led-cyan"
                           : "bg-[#3a3a42] text-transparent"
                       }`}
+                      data-lit={isProjectActive}
                       aria-hidden
                     />
                     <p
@@ -316,6 +332,18 @@ export function Sidebar({
                                     >
                                       Rename Document
                                     </button>
+                                    {onOpenVersionHistory ? (
+                                      <button
+                                        type="button"
+                                        className="module-button mb-0.5 w-full rounded-sm border border-transparent px-2 py-1.5 text-left font-mono text-[10px] tracking-[0.12em] text-foreground uppercase hover:border-panel-border"
+                                        onClick={() => {
+                                          setOpenMenuId(null);
+                                          onOpenVersionHistory(document.id);
+                                        }}
+                                      >
+                                        Version History
+                                      </button>
+                                    ) : null}
                                     <button
                                       type="button"
                                       className="module-button w-full rounded-sm border border-transparent px-2 py-1.5 text-left font-mono text-[10px] tracking-[0.12em] text-[#e89a5b] uppercase hover:border-panel-border"
@@ -429,6 +457,6 @@ export function Sidebar({
           </div>
         </div>
       ) : null}
-    </aside>
+    </Shell>
   );
 }
