@@ -47,13 +47,6 @@ export function formatScreenplay(blocks: DocumentBlock[]): ExportNode[] {
 
   for (const block of blocks) {
     const resolvedRole = resolveRole(block.type);
-    // TEMP DEBUG — remove after identifying type mismatch
-    console.log({
-      type: block.type,
-      content: block.content,
-      export: block.metadata?.export,
-      resolvedRole,
-    });
 
     if (block.metadata?.export === false) {
       continue;

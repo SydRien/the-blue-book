@@ -1,3 +1,8 @@
+import {
+  measureTextUnits,
+  resolveFont,
+  resolveFontRuns,
+} from "@/lib/export/fonts/fontResolver";
 import type {
   ExportNode,
   LayoutDocument,
@@ -7,7 +12,6 @@ import type {
 } from "@/lib/export/types";
 
 const PT_PER_IN = 72;
-const CJK_CHAR_PATTERN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
 
 type LineGroup = {
   role: ExportNode["role"];
@@ -15,27 +19,15 @@ type LineGroup = {
   keepWithNext: boolean;
 };
 
-function usesCjkFont(node: ExportNode): boolean {
-  return node.language === "zh" || CJK_CHAR_PATTERN.test(node.text);
-}
-
-function measureUnits(text: string): number {
-  let units = 0;
-  for (const char of text) {
-    units += CJK_CHAR_PATTERN.test(char) ? 2 : 1;
-  }
-  return units;
-}
-
 /**
  * Wrap by visual units: Latin ≈ 1 unit, CJK ≈ 2 (fullwidth).
+ * maxUnits is always widthIn × charsPerInch (10-pitch); CJK weight is in measureTextUnits.
  */
 function wrapText(text: string, maxUnits: number): string[] {
   if (maxUnits < 1) {
     return [text];
   }
 
-  // Prefer wrapping on spaces for Latin; fall back to per-char for CJK runs.
   const tokens = text.split(/(\s+)/).filter((token) => token.length > 0);
   const lines: string[] = [];
   let current = "";
@@ -50,14 +42,14 @@ function wrapText(text: string, maxUnits: number): string[] {
   }
 
   for (const token of tokens) {
-    const tokenUnits = measureUnits(token);
+    const tokenUnits = measureTextUnits(token);
 
     if (tokenUnits > maxUnits) {
       pushCurrent();
       let chunk = "";
       let chunkUnits = 0;
       for (const char of token) {
-        const charUnits = measureUnits(char);
+        const charUnits = measureTextUnits(char);
         if (chunkUnits + charUnits > maxUnits && chunk) {
           lines.push(chunk);
           chunk = char;
@@ -86,17 +78,12 @@ function wrapText(text: string, maxUnits: number): string[] {
   return lines.length > 0 ? lines : [""];
 }
 
-function roleGeometry(
-  role: ExportNode["role"],
-  profile: PageProfile,
-  cjk: boolean,
-) {
-  const charsPerInch = cjk ? profile.cjkCharsPerInch : profile.charsPerInch;
+function roleGeometry(role: ExportNode["role"], profile: PageProfile) {
   const dialogueX = profile.dialogueLeftIn * PT_PER_IN;
   const dialogueWidth = profile.dialogueWidthIn * PT_PER_IN;
-  const characterX = profile.characterLeftIn * PT_PER_IN;
-  // Character column spans from 3.7" to dialogue right edge so cue sits over dialogue.
-  const characterWidth = dialogueX + dialogueWidth - characterX;
+  // Pitch base is Courier 10 cpi; CJK fullwidth counted as 2 units in wrap.
+  const maxUnitsForWidth = (widthIn: number) =>
+    Math.floor(widthIn * profile.charsPerInch);
 
   switch (role) {
     case "scene_heading":
@@ -105,59 +92,89 @@ function roleGeometry(
         xPt: profile.marginLeftPt,
         widthPt: profile.actionWidthIn * PT_PER_IN,
         align: "left" as const,
-        maxUnits: Math.floor(profile.actionWidthIn * charsPerInch),
+        maxUnits: maxUnitsForWidth(profile.actionWidthIn),
         spaceBeforePt:
           role === "scene_heading" ? profile.spaceBeforeScenePt : 0,
         spaceAfterPt:
           role === "scene_heading"
             ? profile.spaceAfterScenePt
-            : profile.lineHeightPt,
+            : profile.spaceAfterActionPt,
       };
     case "character":
+      // Column band only — per-line X is computed from cue width (see below).
       return {
-        xPt: characterX,
-        widthPt: Math.max(characterWidth, 1.5 * PT_PER_IN),
+        xPt: dialogueX,
+        widthPt: dialogueWidth,
         align: "left" as const,
-        maxUnits: Math.floor(
-          Math.max(profile.dialogueWidthIn - 1.2, 2) * charsPerInch,
-        ),
-        spaceBeforePt: profile.spaceBeforeCharacterPt,
-        spaceAfterPt: 0,
+        maxUnits: maxUnitsForWidth(profile.dialogueWidthIn),
+        spaceBeforePt: 0,
+        spaceAfterPt: profile.spaceAfterCharacterPt,
       };
     case "dialogue":
       return {
         xPt: dialogueX,
         widthPt: dialogueWidth,
         align: "left" as const,
-        maxUnits: Math.floor(profile.dialogueWidthIn * charsPerInch),
+        maxUnits: maxUnitsForWidth(profile.dialogueWidthIn),
         spaceBeforePt: 0,
         spaceAfterPt: profile.spaceAfterDialoguePt,
       };
   }
 }
 
+/**
+ * Center a character cue over the dialogue column by placing its left edge
+ * from measured text width. pdfmake ignores alignment with absolutePosition,
+ * so we cannot rely on align:"center".
+ */
+function centeredCharacterBox(
+  text: string,
+  profile: PageProfile,
+): { xPt: number; widthPt: number } {
+  const dialogueLeftPt = profile.dialogueLeftIn * PT_PER_IN;
+  const dialogueWidthPt = profile.dialogueWidthIn * PT_PER_IN;
+  const centerPt = dialogueLeftPt + dialogueWidthPt / 2;
+  const widthPt = Math.max(
+    (measureTextUnits(text) / profile.charsPerInch) * PT_PER_IN,
+    PT_PER_IN * 0.5,
+  );
+  return {
+    xPt: centerPt - widthPt / 2,
+    widthPt,
+  };
+}
+
 function nodeToGroup(node: ExportNode, profile: PageProfile): LineGroup {
-  const cjk = usesCjkFont(node);
-  const fontFamily = cjk ? profile.cjkFontFamily : profile.fontFamily;
-  const geometry = roleGeometry(node.role, profile, cjk);
-  const wrapped = wrapText(node.text, geometry.maxUnits);
+  const geometry = roleGeometry(node.role, profile);
+  // Honor authored line breaks, then wrap each paragraph to column width.
+  const wrapped = node.text
+    .split(/\r?\n/)
+    .flatMap((paragraph) => wrapText(paragraph, geometry.maxUnits));
   const lines: LayoutLine[] = [];
 
   wrapped.forEach((text, index) => {
+    const runs = resolveFontRuns(text, node.language);
+    const box =
+      node.role === "character"
+        ? centeredCharacterBox(text, profile)
+        : { xPt: geometry.xPt, widthPt: geometry.widthPt };
+
     lines.push({
       role: node.role,
       text,
-      xPt: geometry.xPt,
-      widthPt: geometry.widthPt,
+      xPt: box.xPt,
+      widthPt: box.widthPt,
       align: geometry.align,
       fontSizePt: node.fontSize ?? profile.fontSizePt,
       heightPt: profile.lineHeightPt,
       spaceBeforePt: index === 0 ? geometry.spaceBeforePt : 0,
-      fontFamily,
+      fontFamily: runs[0]?.fontFamily ?? resolveFont(text, node.language),
+      runs,
     });
   });
 
   if (geometry.spaceAfterPt > 0) {
+    const spacerFont = profile.fontFamily;
     lines.push({
       role: node.role,
       text: "",
@@ -167,7 +184,8 @@ function nodeToGroup(node: ExportNode, profile: PageProfile): LineGroup {
       fontSizePt: profile.fontSizePt,
       heightPt: geometry.spaceAfterPt,
       spaceBeforePt: 0,
-      fontFamily,
+      fontFamily: spacerFont,
+      runs: [],
     });
   }
 
@@ -188,6 +206,7 @@ function groupHeight(group: LineGroup): number {
 /**
  * Builds a paginated LayoutDocument from ExportNodes + page profile.
  * Keeps character cues with following dialogue when possible.
+ * Page numbers are header metadata — body Y always starts at marginTopPt.
  */
 export function buildLayout(
   title: string,
@@ -252,6 +271,8 @@ export function buildLayout(
     pageHeightPt: profile.pageHeightPt,
     marginTopPt: profile.marginTopPt,
     marginBottomPt: profile.marginBottomPt,
+    pageNumberTopPt: profile.pageNumberTopPt,
+    pageNumberWidthPt: profile.pageNumberWidthPt,
     pages,
   };
 }

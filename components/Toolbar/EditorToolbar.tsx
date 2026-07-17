@@ -51,7 +51,7 @@ export function EditorToolbar({
           type="button"
           className="module-button ml-auto flex min-w-[5.5rem] items-center justify-center gap-2 rounded-sm border border-panel-border px-3 py-2"
           onClick={onOpenExport}
-          title="Export screenplay PDF"
+          title="Export document"
         >
           <span
             className="led-dot h-1.5 w-1.5 rounded-full bg-led-green text-led-green"

@@ -1,5 +1,9 @@
-export const SCREENPLAY_FONT_FAMILY = "CourierPrime";
-export const CJK_FONT_FAMILY = "NotoSansSC";
+import {
+  CJK_FONT_FAMILY,
+  SCREENPLAY_FONT_FAMILY,
+} from "@/lib/export/fonts/fontFamilies";
+
+export { CJK_FONT_FAMILY, SCREENPLAY_FONT_FAMILY };
 
 const LATIN_FONT_FILES = {
   normal: "CourierPrime-Regular.ttf",
@@ -40,14 +44,27 @@ type PdfMakeFonts = {
   fonts?: Record<string, FontFaceMap>;
 };
 
-let fontsReady: Promise<void> | null = null;
+type FontBundle = {
+  vfs: Record<string, string>;
+  fonts: Record<string, FontFaceMap>;
+};
+
+let fontsBundle: Promise<FontBundle> | null = null;
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
+  // Keep chunks small — large spreads exceed JS argument limits.
+  const chunkSize = 0x2000;
   let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]!);
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(
+      null,
+      chunk as unknown as number[],
+    );
   }
+
   return btoa(binary);
 }
 
@@ -122,6 +139,7 @@ async function loadCjkFonts(): Promise<{
     );
   }
 
+  // Bold is optional — Regular alone is enough for screenplay body text.
   const bold = await resolveFontFile(CJK_FONT_FILES.bold);
   const boldFile = bold?.fileName ?? regular.fileName;
 
@@ -143,67 +161,63 @@ async function loadCjkFonts(): Promise<{
   };
 }
 
-function registerFonts(
-  pdfMake: PdfMakeFonts,
-  vfs: Record<string, string>,
-  fonts: Record<string, FontFaceMap>,
-) {
+function registerFonts(pdfMake: PdfMakeFonts, bundle: FontBundle) {
   if (typeof pdfMake.addVirtualFileSystem === "function") {
-    pdfMake.addVirtualFileSystem(vfs);
+    pdfMake.addVirtualFileSystem(bundle.vfs);
   } else {
     pdfMake.vfs = {
       ...(pdfMake.vfs ?? {}),
-      ...vfs,
+      ...bundle.vfs,
     };
   }
 
   if (typeof pdfMake.addFonts === "function") {
-    pdfMake.addFonts(fonts);
+    pdfMake.addFonts(bundle.fonts);
   } else {
     pdfMake.fonts = {
       ...(pdfMake.fonts ?? {}),
-      ...fonts,
+      ...bundle.fonts,
     };
   }
+}
+
+async function loadFontBundle(): Promise<FontBundle> {
+  const [latinVfs, cjk] = await Promise.all([
+    loadLatinFonts(),
+    loadCjkFonts(),
+  ]);
+
+  return {
+    vfs: {
+      ...latinVfs,
+      ...cjk.vfs,
+    },
+    fonts: {
+      [SCREENPLAY_FONT_FAMILY]: {
+        normal: LATIN_FONT_FILES.normal,
+        bold: LATIN_FONT_FILES.bold,
+        italics: LATIN_FONT_FILES.italics,
+        bolditalics: LATIN_FONT_FILES.bolditalics,
+      },
+      [CJK_FONT_FAMILY]: cjk.faces,
+    },
+  };
 }
 
 /**
  * Embeds Courier Prime (Latin) + Noto Sans SC (CJK) into pdfmake.
  * Local public/fonts preferred; CDN fallback when missing.
+ * Re-registers on every call so HMR / re-imports still see both faces.
  */
 export async function ensureScreenplayFonts(
   pdfMake: PdfMakeFonts,
 ): Promise<void> {
-  if (!fontsReady) {
-    fontsReady = (async () => {
-      try {
-        const [latinVfs, cjk] = await Promise.all([
-          loadLatinFonts(),
-          loadCjkFonts(),
-        ]);
-
-        registerFonts(
-          pdfMake,
-          {
-            ...latinVfs,
-            ...cjk.vfs,
-          },
-          {
-            [SCREENPLAY_FONT_FAMILY]: {
-              normal: LATIN_FONT_FILES.normal,
-              bold: LATIN_FONT_FILES.bold,
-              italics: LATIN_FONT_FILES.italics,
-              bolditalics: LATIN_FONT_FILES.bolditalics,
-            },
-            [CJK_FONT_FAMILY]: cjk.faces,
-          },
-        );
-      } catch (error) {
-        fontsReady = null;
-        throw error;
-      }
-    })();
+  if (!fontsBundle) {
+    fontsBundle = loadFontBundle().catch((error) => {
+      fontsBundle = null;
+      throw error;
+    });
   }
 
-  await fontsReady;
+  registerFonts(pdfMake, await fontsBundle);
 }
