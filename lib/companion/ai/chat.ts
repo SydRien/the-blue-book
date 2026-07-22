@@ -1,7 +1,10 @@
 import type OpenAI from "openai";
 import { createOpenAiClient } from "@/lib/companion/ai/client";
 import { CompanionAiError } from "@/lib/companion/ai/errors";
-import { buildJonSystemPrompt } from "@/lib/companion/systemPrompt";
+import {
+  buildJonPrompt,
+  JON_CHARACTER_ENGINE_DEBUG_MARKER,
+} from "@/lib/companion/jonPromptBuilder";
 
 export const JON_CHAT_MODEL = "gpt-4o-mini";
 export const JON_CHAT_HISTORY_LIMIT = 40;
@@ -20,13 +23,17 @@ function toOpenAiRole(
 }
 
 /**
- * Stream Jon's reply. Sends only personality system prompt + conversation.
- * Never attach documents, notes, or project payloads.
+ * Stream Jon's reply. Personality + optional truncated creative context + conversation.
+ * Never attach raw documents, notes arrays, or project payloads.
  */
 export async function streamJonChat(
   messages: CompanionChatInputMessage[],
-  client: OpenAI = createOpenAiClient(),
+  options: {
+    client?: OpenAI;
+    creativeContext?: string | null;
+  } = {},
 ): Promise<AsyncIterable<string>> {
+  const client = options.client ?? createOpenAiClient();
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new CompanionAiError("bad_request", "messages are required");
   }
@@ -48,18 +55,50 @@ export async function streamJonChat(
   }
 
   const history = messages.slice(-JON_CHAT_HISTORY_LIMIT);
+  const systemPrompt = buildJonPrompt({
+    creativeContext: options.creativeContext,
+  });
+
+  // TEMP DEBUG — confirm Character Engine prompt reaches OpenAI call site
+  const usesCharacterEngine = systemPrompt.includes(
+    JON_CHARACTER_ENGINE_DEBUG_MARKER,
+  );
+  console.log("[JonDebug] streamJonChat → OpenAI", {
+    model: JON_CHAT_MODEL,
+    historyCount: history.length,
+    systemPromptChars: systemPrompt.length,
+    usesCharacterEngine,
+    hasYouAreJon: systemPrompt.includes("You are Jon."),
+    hasTraitsSection: systemPrompt.includes("Traits:"),
+    hasSpeechSection: systemPrompt.includes("Speech:"),
+    hasLifeStateSection: systemPrompt.includes("Current life state:"),
+    hasCreativeSection: systemPrompt.includes("### Creative context"),
+    marker: JON_CHARACTER_ENGINE_DEBUG_MARKER,
+  });
+  if (!usesCharacterEngine) {
+    console.error(
+      "[JonDebug] CRITICAL: system prompt missing Character Engine marker",
+    );
+  }
 
   try {
+    const openAiMessages = [
+      { role: "system" as const, content: systemPrompt },
+      ...history.map((message) => ({
+        role: toOpenAiRole(message.role),
+        content: message.content.trim(),
+      })),
+    ];
+    console.log("[JonDebug] OpenAI messages[0].role", openAiMessages[0]?.role);
+    console.log(
+      "[JonDebug] OpenAI system message starts with",
+      openAiMessages[0]?.content.slice(0, 80),
+    );
+
     const stream = await client.chat.completions.create({
       model: JON_CHAT_MODEL,
       stream: true,
-      messages: [
-        { role: "system", content: buildJonSystemPrompt() },
-        ...history.map((message) => ({
-          role: toOpenAiRole(message.role),
-          content: message.content.trim(),
-        })),
-      ],
+      messages: openAiMessages,
     });
 
     async function* tokens(): AsyncIterable<string> {

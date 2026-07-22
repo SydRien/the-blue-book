@@ -4,6 +4,7 @@ import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { BlockContextMenu } from "@/components/Blocks/BlockContextMenu";
 import {
   BlockEditorProvider,
@@ -14,6 +15,15 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { isRenamableBlockInstance } from "@/lib/blocks/blockRegistry";
 import type { BlockDefinition } from "@/lib/blocks/types";
 import { documentToTiptap, tiptapToDocument } from "@/lib/document/codec";
+import {
+  DEFAULT_ZOOM,
+  loadEditorSettings,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  saveEditorSettings,
+  zoomIn,
+  zoomOut,
+} from "@/lib/editor/editorSettings";
 import { ScriptBlock } from "@/lib/editor/scriptBlock";
 import { UniqueBlockId } from "@/lib/editor/uniqueBlockId";
 import type { BlueBookDocument, BlockTypeId } from "@/types/document";
@@ -81,6 +91,55 @@ export function ScriptEditor({
   const [dialog, setDialog] = useState<InstanceDialog>(null);
   const [draftName, setDraftName] = useState("");
   const [dialogError, setDialogError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+
+  useEffect(() => {
+    setZoom(loadEditorSettings().zoom);
+  }, []);
+
+  const applyZoom = useCallback((next: number) => {
+    setZoom(next);
+    saveEditorSettings({ zoom: next });
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    applyZoom(zoomIn(zoom));
+  }, [applyZoom, zoom]);
+
+  const handleZoomOut = useCallback(() => {
+    applyZoom(zoomOut(zoom));
+  }, [applyZoom, zoom]);
+
+  const handleZoomReset = useCallback(() => {
+    applyZoom(DEFAULT_ZOOM);
+  }, [applyZoom]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const mod = event.metaKey || event.ctrlKey;
+      if (!mod) {
+        return;
+      }
+
+      if (event.key === "=" || event.key === "+") {
+        event.preventDefault();
+        handleZoomIn();
+        return;
+      }
+      if (event.key === "-" || event.key === "_") {
+        event.preventDefault();
+        handleZoomOut();
+        return;
+      }
+      if (event.key === "0") {
+        event.preventDefault();
+        handleZoomReset();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleZoomIn, handleZoomOut, handleZoomReset]);
 
   const labelById = useMemo(() => {
     const map = new Map<string, string>();
@@ -218,7 +277,7 @@ export function ScriptEditor({
 
   return (
     <BlockEditorProvider value={blockEditorValue}>
-      <section className="flex min-w-0 flex-1 flex-col bg-background">
+      <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
         <EditorToolbar
           activeType={activeType}
           blockTypes={blockTypes}
@@ -226,10 +285,18 @@ export function ScriptEditor({
           onOpenExport={onOpenExport}
           onOpenStatistics={onOpenStatistics}
           onOpenSaveVersion={onOpenSaveVersion}
+          zoom={zoom}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          canZoomIn={zoom < MAX_ZOOM - 0.001}
+          canZoomOut={zoom > MIN_ZOOM + 0.001}
         />
 
-        <div className="workspace-grid flex flex-1 overflow-y-auto px-8 py-8">
-          <div className="mx-auto w-full max-w-2xl">
+        <div className="workspace-grid min-h-0 flex-1 overflow-y-auto px-8 py-8">
+          <div
+            className="editor-zoom-surface mx-auto w-full max-w-2xl"
+            style={{ zoom } as CSSProperties}
+          >
             <div className="mb-6 flex items-center justify-between">
               <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
                 Document · {documentName}

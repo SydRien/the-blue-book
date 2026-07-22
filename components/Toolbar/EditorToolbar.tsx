@@ -1,6 +1,7 @@
 "use client";
 
 import type { BlockDefinition } from "@/lib/blocks/types";
+import { formatZoomPercent } from "@/lib/editor/editorSettings";
 import type { BlockTypeId } from "@/types/document";
 
 type EditorToolbarProps = {
@@ -10,6 +11,11 @@ type EditorToolbarProps = {
   onOpenExport?: () => void;
   onOpenStatistics?: () => void;
   onOpenSaveVersion?: () => void;
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  canZoomIn: boolean;
+  canZoomOut: boolean;
 };
 
 export function EditorToolbar({
@@ -19,16 +25,49 @@ export function EditorToolbar({
   onOpenExport,
   onOpenStatistics,
   onOpenSaveVersion,
+  zoom,
+  onZoomIn,
+  onZoomOut,
+  canZoomIn,
+  canZoomOut,
 }: EditorToolbarProps) {
   return (
-    <div className="border-b border-panel-border bg-panel px-3 py-2">
-      <div className="mb-2 flex items-center justify-between">
+    <div className="shrink-0 border-b border-panel-border bg-panel px-3 py-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
           Block Modules
         </p>
-        <div className="flex items-center gap-1.5">
-          <span className="panel-screw" aria-hidden />
-          <span className="panel-screw" aria-hidden />
+        <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-1 rounded-sm border border-panel-border bg-panel-inset px-1 py-0.5"
+            title="Editor zoom (visual only)"
+          >
+            <button
+              type="button"
+              className="module-button rounded-sm border border-panel-border px-2 py-1 font-mono text-[10px] text-foreground disabled:opacity-40"
+              onClick={onZoomOut}
+              disabled={!canZoomOut}
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+            <span className="min-w-[2.75rem] text-center font-mono text-[10px] tracking-[0.08em] text-led-cyan tabular-nums">
+              {formatZoomPercent(zoom)}
+            </span>
+            <button
+              type="button"
+              className="module-button rounded-sm border border-panel-border px-2 py-1 font-mono text-[10px] text-foreground disabled:opacity-40"
+              onClick={onZoomIn}
+              disabled={!canZoomIn}
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="panel-screw" aria-hidden />
+            <span className="panel-screw" aria-hidden />
+          </div>
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
