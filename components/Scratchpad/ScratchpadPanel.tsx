@@ -60,7 +60,7 @@ export function ScratchpadPanel({
   }, []);
 
   return (
-    <aside className="flex h-[min(32%,16rem)] min-h-[9rem] shrink-0 flex-col border-t border-panel-border bg-panel">
+    <aside className="flex h-full min-h-0 flex-col border-t border-panel-border bg-panel">
       <div className="flex items-center justify-between border-b border-panel-border px-3 py-2">
         <div>
           <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">

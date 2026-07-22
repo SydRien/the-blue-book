@@ -20,7 +20,7 @@ export function LeftRail({
   characters,
 }: LeftRailProps) {
   return (
-    <aside className="relative flex w-60 shrink-0 flex-col border-r border-panel-border bg-panel">
+    <aside className="relative flex h-full min-h-0 w-full flex-col border-r border-panel-border bg-panel">
       <div className="flex items-center justify-between border-b border-panel-border px-2 py-2">
         <div className="flex flex-wrap gap-1">
           {(

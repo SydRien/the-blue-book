@@ -26,6 +26,8 @@ import {
   LeftRail,
   type LeftRailTab,
 } from "@/components/Workspace/LeftRail";
+import { RightSidebarLayout } from "@/components/Layout/RightSidebarLayout";
+import { WorkspaceLayout } from "@/components/Layout/WorkspaceLayout";
 import {
   countBlocksOfType,
   createCustomBlockType,
@@ -175,6 +177,15 @@ export function AppShell() {
   const activeDocumentSummary =
     activeProject?.documents.find((item) => item.id === activeDocumentId) ??
     null;
+  const jonProjectNotes = useMemo(() => {
+    if (!activeProjectId) {
+      return [];
+    }
+    return notes
+      .filter((note) => note.projectId === activeProjectId)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, 5);
+  }, [notes, activeProjectId]);
 
   async function refreshProjects(
     preferredProjectId?: string | null,
@@ -779,197 +790,228 @@ export function AppShell() {
         projectName={activeProject?.title ?? "No Project"}
         documentName={activeDocumentSummary?.title ?? document?.title ?? "—"}
       />
-      <div className="flex min-h-0 flex-1">
-        <LeftRail
-          tab={leftRailTab}
-          onTabChange={(tab) => {
-            setLeftRailTab(tab);
-            if (tab !== "characters") {
-              setSelectedCharacterId(null);
-            }
-          }}
-          projects={
-            <Sidebar
-              embedded
-              projects={projects}
-              activeProjectId={activeProjectId}
-              activeDocumentId={activeDocumentId}
-              projectNotes={notes}
-              onSelectDocument={handleSelectDocument}
-              onSelectNote={(note) => {
-                setSelectedNoteId(note.id);
-                setLeftRailTab("projects");
-              }}
-              onCreateProject={handleCreateProject}
-              onCreateDocument={handleCreateDocument}
-              onRenameProject={handleRenameProject}
-              onDeleteProject={handleDeleteProject}
-              onRenameDocument={handleRenameDocument}
-              onDeleteDocument={handleDeleteDocument}
-              onOpenVersionHistory={openVersionHistory}
-              creatingProject={creatingProject}
-              creatingDocumentId={creatingDocumentId}
-            />
-          }
-          outline={
-            <OutlinePanel
-              document={document}
-              selectedSourceBlockId={selectedOutlineBlockId}
-              onSelectNode={handleOutlineSelect}
-            />
-          }
-          characters={
-            <CharactersPanel
-              characters={characters}
-              selectedId={selectedCharacterId}
-              onSelect={(character) => {
-                setSelectedCharacterId(character.id);
-              }}
-              onCreate={() => {
-                setCharacterDraft("Jin Wen Gong");
-                setCharacterError(null);
-                setCharacterDialog({ kind: "create" });
-              }}
-              onRename={(character) => {
-                setCharacterDraft(character.name);
-                setCharacterError(null);
-                setCharacterDialog({ kind: "rename", character });
-              }}
-              onDelete={(character) => {
-                setCharacterError(null);
-                setCharacterDialog({ kind: "delete", character });
-              }}
-            />
-          }
-        />
-        {document && activeDocumentId ? (
-          <ScriptEditor
-            key={`${activeDocumentId}-${editorEpoch}`}
-            document={document}
-            documentName={activeDocumentSummary?.title ?? document.title}
-            blockTypes={blockTypes}
-            onDocumentChange={setDocument}
-            onActiveBlockChange={setActiveBlock}
-            onEditorReady={setEditor}
-            activeType={activeBlock.type}
-            onOpenExport={() => setExportOpen(true)}
-            onOpenStatistics={() => setStatisticsOpen(true)}
-            onOpenSaveVersion={() => {
-              setVersionDraft("");
-              setVersionError(null);
-              setVersionDialog({ kind: "create" });
+      <WorkspaceLayout
+        left={
+          <LeftRail
+            tab={leftRailTab}
+            onTabChange={(tab) => {
+              setLeftRailTab(tab);
+              if (tab !== "characters") {
+                setSelectedCharacterId(null);
+              }
             }}
-          />
-        ) : (
-          <section className="flex min-w-0 flex-1 items-center justify-center bg-background">
-            <div className="max-w-sm px-6 text-center">
-              <p className="font-mono text-xs tracking-[0.16em] text-muted uppercase">
-                {syncStatus === "loading"
-                  ? "Loading document…"
-                  : "No document open"}
-              </p>
-              <p className="mt-2 font-mono text-[10px] leading-relaxed text-muted">
-                Select a document in the sidebar, or create one with + Document.
-              </p>
-            </div>
-          </section>
-        )}
-        <div className="flex w-64 shrink-0 flex-col border-l border-panel-border bg-panel">
-          <div className="min-h-0 flex-1 overflow-hidden">
-            {selectedCharacter ? (
-              <CharacterInspector
-                character={selectedCharacter}
-                document={document}
-                onChange={handleCharacterFieldChange}
-                onJumpToBlock={(blockId) => {
-                  scrollEditorToBlock(editor, blockId);
+            projects={
+              <Sidebar
+                embedded
+                projects={projects}
+                activeProjectId={activeProjectId}
+                activeDocumentId={activeDocumentId}
+                projectNotes={notes}
+                onSelectDocument={handleSelectDocument}
+                onSelectNote={(note) => {
+                  setSelectedNoteId(note.id);
+                  setLeftRailTab("projects");
                 }}
-                onClose={() => setSelectedCharacterId(null)}
+                onCreateProject={handleCreateProject}
+                onCreateDocument={handleCreateDocument}
+                onRenameProject={handleRenameProject}
+                onDeleteProject={handleDeleteProject}
+                onRenameDocument={handleRenameDocument}
+                onDeleteDocument={handleDeleteDocument}
+                onOpenVersionHistory={openVersionHistory}
+                creatingProject={creatingProject}
+                creatingDocumentId={creatingDocumentId}
               />
-            ) : (
-              <InspectorPanel
-                settings={{
-                  type: activeBlock.type,
-                  font: activeBlock.font,
-                  size: activeBlock.size,
-                  exportVisible: activeBlock.exportVisible,
+            }
+            outline={
+              <OutlinePanel
+                document={document}
+                selectedSourceBlockId={selectedOutlineBlockId}
+                onSelectNode={handleOutlineSelect}
+              />
+            }
+            characters={
+              <CharactersPanel
+                characters={characters}
+                selectedId={selectedCharacterId}
+                onSelect={(character) => {
+                  setSelectedCharacterId(character.id);
                 }}
-                blockTypes={blockTypes}
-                onChange={handleInspectorChange}
-                onCreateBlockType={openCreateBlockType}
-                onRenameBlockType={openRenameBlockType}
-                onDeleteBlockType={openDeleteBlockType}
-                entityLink={
-                  activeBlock.type === "character" && activeBlock.id
+                onCreate={() => {
+                  setCharacterDraft("Jin Wen Gong");
+                  setCharacterError(null);
+                  setCharacterDialog({ kind: "create" });
+                }}
+                onRename={(character) => {
+                  setCharacterDraft(character.name);
+                  setCharacterError(null);
+                  setCharacterDialog({ kind: "rename", character });
+                }}
+                onDelete={(character) => {
+                  setCharacterError(null);
+                  setCharacterDialog({ kind: "delete", character });
+                }}
+              />
+            }
+          />
+        }
+        center={
+          document && activeDocumentId ? (
+            <ScriptEditor
+              key={`${activeDocumentId}-${editorEpoch}`}
+              document={document}
+              documentName={activeDocumentSummary?.title ?? document.title}
+              blockTypes={blockTypes}
+              onDocumentChange={setDocument}
+              onActiveBlockChange={setActiveBlock}
+              onEditorReady={setEditor}
+              activeType={activeBlock.type}
+              onOpenExport={() => setExportOpen(true)}
+              onOpenStatistics={() => setStatisticsOpen(true)}
+              onOpenSaveVersion={() => {
+                setVersionDraft("");
+                setVersionError(null);
+                setVersionDialog({ kind: "create" });
+              }}
+            />
+          ) : (
+            <section className="flex min-h-0 min-w-0 flex-1 items-center justify-center bg-background">
+              <div className="max-w-sm px-6 text-center">
+                <p className="font-mono text-xs tracking-[0.16em] text-muted uppercase">
+                  {syncStatus === "loading"
+                    ? "Loading document…"
+                    : "No document open"}
+                </p>
+                <p className="mt-2 font-mono text-[10px] leading-relaxed text-muted">
+                  Select a document in the sidebar, or create one with +
+                  Document.
+                </p>
+              </div>
+            </section>
+          )
+        }
+        right={
+          <RightSidebarLayout
+            inspector={
+              selectedCharacter ? (
+                <CharacterInspector
+                  character={selectedCharacter}
+                  document={document}
+                  onChange={handleCharacterFieldChange}
+                  onJumpToBlock={(blockId) => {
+                    scrollEditorToBlock(editor, blockId);
+                  }}
+                  onClose={() => setSelectedCharacterId(null)}
+                />
+              ) : (
+                <InspectorPanel
+                  settings={{
+                    type: activeBlock.type,
+                    font: activeBlock.font,
+                    size: activeBlock.size,
+                    exportVisible: activeBlock.exportVisible,
+                  }}
+                  blockTypes={blockTypes}
+                  onChange={handleInspectorChange}
+                  onCreateBlockType={openCreateBlockType}
+                  onRenameBlockType={openRenameBlockType}
+                  onDeleteBlockType={openDeleteBlockType}
+                  entityLink={
+                    activeBlock.type === "character" && activeBlock.id
+                      ? {
+                          blockId: activeBlock.id,
+                          cueText: activeBlock.content,
+                          linked: linkedForActiveBlock,
+                          characters,
+                          onCreateFromCue: () => {
+                            const name =
+                              activeBlock.content.trim() || "New Character";
+                            const created = getCharacterManager().create({
+                              name,
+                            });
+                            getCharacterManager().linkBlock(
+                              created.id,
+                              activeBlock.id,
+                            );
+                            refreshCharacters();
+                            setSelectedCharacterId(created.id);
+                            setLeftRailTab("characters");
+                          },
+                          onLink: (characterId) => {
+                            getCharacterManager().linkBlock(
+                              characterId,
+                              activeBlock.id,
+                            );
+                            refreshCharacters();
+                          },
+                          onUnlink: () => {
+                            if (!linkedForActiveBlock) {
+                              return;
+                            }
+                            getCharacterManager().unlinkBlock(
+                              linkedForActiveBlock.id,
+                              activeBlock.id,
+                            );
+                            refreshCharacters();
+                          },
+                        }
+                      : null
+                  }
+                />
+              )
+            }
+            scratchpad={
+              <ScratchpadPanel
+                notes={notes}
+                selectedId={selectedNoteId}
+                activeProjectId={activeProjectId}
+                activeProjectTitle={activeProject?.title}
+                onSelect={(note) => setSelectedNoteId(note.id)}
+                onCreate={() => {
+                  setNoteDraft("Untitled idea");
+                  setNoteError(null);
+                  setNoteDialog({ kind: "create" });
+                }}
+                onRename={(note) => {
+                  setNoteDraft(note.title);
+                  setNoteError(null);
+                  setNoteDialog({ kind: "rename", note });
+                }}
+                onDelete={(note) => {
+                  setNoteError(null);
+                  setNoteDialog({ kind: "delete", note });
+                }}
+                onChangeContent={handleNoteContentChange}
+                onChangeType={handleNoteTypeChange}
+                onSaveToProject={handleSaveNoteToProject}
+              />
+            }
+            jon={
+              <JonPanel
+                project={
+                  activeProject
                     ? {
-                        blockId: activeBlock.id,
-                        cueText: activeBlock.content,
-                        linked: linkedForActiveBlock,
-                        characters,
-                        onCreateFromCue: () => {
-                          const name =
-                            activeBlock.content.trim() || "New Character";
-                          const created = getCharacterManager().create({
-                            name,
-                          });
-                          getCharacterManager().linkBlock(
-                            created.id,
-                            activeBlock.id,
-                          );
-                          refreshCharacters();
-                          setSelectedCharacterId(created.id);
-                          setLeftRailTab("characters");
-                        },
-                        onLink: (characterId) => {
-                          getCharacterManager().linkBlock(
-                            characterId,
-                            activeBlock.id,
-                          );
-                          refreshCharacters();
-                        },
-                        onUnlink: () => {
-                          if (!linkedForActiveBlock) {
-                            return;
-                          }
-                          getCharacterManager().unlinkBlock(
-                            linkedForActiveBlock.id,
-                            activeBlock.id,
-                          );
-                          refreshCharacters();
-                        },
+                        title: activeProject.title,
+                        description: activeProject.description,
                       }
                     : null
                 }
+                document={document}
+                activeBlock={
+                  activeBlock.id
+                    ? {
+                        id: activeBlock.id,
+                        type: activeBlock.type,
+                        content: activeBlock.content,
+                      }
+                    : null
+                }
+                notes={jonProjectNotes}
               />
-            )}
-          </div>
-          <ScratchpadPanel
-            notes={notes}
-            selectedId={selectedNoteId}
-            activeProjectId={activeProjectId}
-            activeProjectTitle={activeProject?.title}
-            onSelect={(note) => setSelectedNoteId(note.id)}
-            onCreate={() => {
-              setNoteDraft("Untitled idea");
-              setNoteError(null);
-              setNoteDialog({ kind: "create" });
-            }}
-            onRename={(note) => {
-              setNoteDraft(note.title);
-              setNoteError(null);
-              setNoteDialog({ kind: "rename", note });
-            }}
-            onDelete={(note) => {
-              setNoteError(null);
-              setNoteDialog({ kind: "delete", note });
-            }}
-            onChangeContent={handleNoteContentChange}
-            onChangeType={handleNoteTypeChange}
-            onSaveToProject={handleSaveNoteToProject}
+            }
           />
-          <JonPanel />
-        </div>
-      </div>
+        }
+      />
       <StatusBar
         projectName={activeProject?.title ?? "No Project"}
         documentName={activeDocumentSummary?.title ?? document?.title ?? "—"}

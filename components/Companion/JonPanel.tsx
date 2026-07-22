@@ -1,17 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { buildJonContext } from "@/lib/companion/context/buildJonContext";
+import type { JonFocusBlock, JonProjectSlice } from "@/lib/companion/context/types";
 import { getChatManager } from "@/lib/companion/chat/chatManager";
 import type { ChatMessage } from "@/lib/companion/chat/types";
+import type { Note } from "@/lib/notes/types";
+import type { BlueBookDocument } from "@/types/document";
+
+type JonPanelProps = {
+  project?: JonProjectSlice | null;
+  document?: BlueBookDocument | null;
+  activeBlock?: JonFocusBlock | null;
+  notes?: Note[];
+};
 
 async function streamJonReply(
   messages: { role: "user" | "jon"; content: string }[],
+  creativeContext: string | null,
   onToken: (token: string) => void,
 ): Promise<string> {
   const response = await fetch("/api/companion/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({
+      messages,
+      ...(creativeContext ? { creativeContext } : {}),
+    }),
   });
 
   if (!response.ok) {
@@ -50,7 +65,12 @@ async function streamJonReply(
   return full;
 }
 
-export function JonPanel() {
+export function JonPanel({
+  project = null,
+  document = null,
+  activeBlock = null,
+  notes = [],
+}: JonPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -59,6 +79,17 @@ export function JonPanel() {
   const [confirmClear, setConfirmClear] = useState(false);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const busy = streaming;
+
+  const creative = useMemo(
+    () =>
+      buildJonContext({
+        project,
+        document,
+        activeBlock,
+        notes,
+      }),
+    [project, document, activeBlock, notes],
+  );
 
   useEffect(() => {
     setMessages(getChatManager().list());
@@ -93,9 +124,13 @@ export function JonPanel() {
         content: message.content,
       }));
 
-      const full = await streamJonReply(payload, (token) => {
-        setStreamText((current) => current + token);
-      });
+      const full = await streamJonReply(
+        payload,
+        creative.text || null,
+        (token) => {
+          setStreamText((current) => current + token);
+        },
+      );
 
       manager.append("jon", full.trim() || "…");
       setMessages(manager.list());
@@ -116,8 +151,11 @@ export function JonPanel() {
     setConfirmClear(false);
   }
 
+  const contextProject = creative.label.projectTitle;
+  const contextDocument = creative.label.documentTitle;
+
   return (
-    <aside className="flex h-[min(38%,14rem)] min-h-[11rem] shrink-0 flex-col border-t border-panel-border bg-panel">
+    <aside className="flex h-full min-h-0 flex-col border-t border-panel-border bg-panel">
       <div className="flex items-center justify-between border-b border-panel-border px-3 py-1.5">
         <div className="flex items-center gap-2">
           <span
@@ -141,6 +179,28 @@ export function JonPanel() {
           </button>
           <span className="panel-screw" aria-hidden />
         </div>
+      </div>
+
+      <div className="border-b border-panel-border px-3 py-1">
+        <p className="font-mono text-[8px] tracking-[0.14em] text-muted uppercase">
+          Context
+        </p>
+        {contextProject || contextDocument ? (
+          <div className="mt-0.5 space-y-0.5">
+            {contextProject ? (
+              <p className="truncate font-mono text-[9px] text-foreground">
+                {contextProject}
+              </p>
+            ) : null}
+            {contextDocument ? (
+              <p className="truncate font-mono text-[9px] text-led-cyan">
+                {contextDocument}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-0.5 font-mono text-[9px] text-muted">—</p>
+        )}
       </div>
 
       <div
