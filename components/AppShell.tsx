@@ -17,6 +17,8 @@ import { CharacterInspector } from "@/components/Characters/CharacterInspector";
 import { CharactersPanel } from "@/components/Characters/CharactersPanel";
 import { OutlinePanel } from "@/components/Outline/OutlinePanel";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
+import { ScratchpadPanel } from "@/components/Scratchpad/ScratchpadPanel";
+import { JonPanel } from "@/components/Companion/JonPanel";
 import { StatusBar } from "@/components/StatusBar/StatusBar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { VersionHistoryPanel } from "@/components/VersionHistory/VersionHistoryPanel";
@@ -35,6 +37,8 @@ import type { BlockDefinition } from "@/lib/blocks/types";
 import { getCharacterManager } from "@/lib/entities/characters/characterManager";
 import { findCharacterForBlock } from "@/lib/entities/characters/characterUtils";
 import type { CharacterRecord } from "@/lib/entities/characters/types";
+import { getNoteManager } from "@/lib/notes/noteManager";
+import type { Note, NoteType } from "@/lib/notes/types";
 import type { OutlineNode } from "@/lib/outline/types";
 import { scrollEditorToBlock } from "@/lib/outline/scrollToBlock";
 import {
@@ -71,6 +75,12 @@ type CharacterDialog =
   | { kind: "create" }
   | { kind: "rename"; character: CharacterRecord }
   | { kind: "delete"; character: CharacterRecord }
+  | null;
+
+type NoteDialog =
+  | { kind: "create" }
+  | { kind: "rename"; note: Note }
+  | { kind: "delete"; note: Note }
   | null;
 
 type VersionDialog =
@@ -116,6 +126,11 @@ export function AppShell() {
     useState<CharacterDialog>(null);
   const [characterDraft, setCharacterDraft] = useState("");
   const [characterError, setCharacterError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Note[]>(() => getNoteManager().list());
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [noteDialog, setNoteDialog] = useState<NoteDialog>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteError, setNoteError] = useState<string | null>(null);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [versionDialog, setVersionDialog] = useState<VersionDialog>(null);
@@ -131,6 +146,10 @@ export function AppShell() {
 
   const refreshCharacters = useCallback(() => {
     setCharacters(getCharacterManager().list());
+  }, []);
+
+  const refreshNotes = useCallback(() => {
+    setNotes(getNoteManager().list());
   }, []);
 
   const refreshVersions = useCallback((documentId: string | null) => {
@@ -634,6 +653,71 @@ export function AppShell() {
     refreshCharacters();
   }
 
+  function confirmNoteDialog() {
+    if (!noteDialog) {
+      return;
+    }
+    setNoteError(null);
+    const manager = getNoteManager();
+
+    try {
+      switch (noteDialog.kind) {
+        case "create": {
+          const title = noteDraft.trim();
+          if (!title) {
+            setNoteError("Title is required");
+            return;
+          }
+          const created = manager.create({ title, type: "idea" });
+          refreshNotes();
+          setSelectedNoteId(created.id);
+          break;
+        }
+        case "rename": {
+          const title = noteDraft.trim();
+          if (!title) {
+            setNoteError("Title is required");
+            return;
+          }
+          manager.rename(noteDialog.note.id, title);
+          refreshNotes();
+          break;
+        }
+        case "delete": {
+          manager.delete(noteDialog.note.id);
+          if (selectedNoteId === noteDialog.note.id) {
+            setSelectedNoteId(null);
+          }
+          refreshNotes();
+          break;
+        }
+      }
+      setNoteDialog(null);
+    } catch (error) {
+      setNoteError(
+        error instanceof Error ? error.message : "Operation failed",
+      );
+    }
+  }
+
+  function handleNoteContentChange(noteId: string, content: string) {
+    getNoteManager().update(noteId, { content });
+    refreshNotes();
+  }
+
+  function handleNoteTypeChange(noteId: string, type: NoteType) {
+    getNoteManager().update(noteId, { type });
+    refreshNotes();
+  }
+
+  function handleSaveNoteToProject(note: Note) {
+    if (!activeProjectId) {
+      return;
+    }
+    getNoteManager().saveToProject(note.id, activeProjectId);
+    refreshNotes();
+  }
+
   function openVersionHistory(documentId: string) {
     if (documentId !== activeDocumentId) {
       return;
@@ -710,7 +794,12 @@ export function AppShell() {
               projects={projects}
               activeProjectId={activeProjectId}
               activeDocumentId={activeDocumentId}
+              projectNotes={notes}
               onSelectDocument={handleSelectDocument}
+              onSelectNote={(note) => {
+                setSelectedNoteId(note.id);
+                setLeftRailTab("projects");
+              }}
               onCreateProject={handleCreateProject}
               onCreateDocument={handleCreateDocument}
               onRenameProject={handleRenameProject}
@@ -785,70 +874,101 @@ export function AppShell() {
             </div>
           </section>
         )}
-        {selectedCharacter ? (
-          <CharacterInspector
-            character={selectedCharacter}
-            document={document}
-            onChange={handleCharacterFieldChange}
-            onJumpToBlock={(blockId) => {
-              scrollEditorToBlock(editor, blockId);
-            }}
-            onClose={() => setSelectedCharacterId(null)}
-          />
-        ) : (
-          <InspectorPanel
-            settings={{
-              type: activeBlock.type,
-              font: activeBlock.font,
-              size: activeBlock.size,
-              exportVisible: activeBlock.exportVisible,
-            }}
-            blockTypes={blockTypes}
-            onChange={handleInspectorChange}
-            onCreateBlockType={openCreateBlockType}
-            onRenameBlockType={openRenameBlockType}
-            onDeleteBlockType={openDeleteBlockType}
-            entityLink={
-              activeBlock.type === "character" && activeBlock.id
-                ? {
-                    blockId: activeBlock.id,
-                    cueText: activeBlock.content,
-                    linked: linkedForActiveBlock,
-                    characters,
-                    onCreateFromCue: () => {
-                      const name =
-                        activeBlock.content.trim() || "New Character";
-                      const created = getCharacterManager().create({ name });
-                      getCharacterManager().linkBlock(
-                        created.id,
-                        activeBlock.id,
-                      );
-                      refreshCharacters();
-                      setSelectedCharacterId(created.id);
-                      setLeftRailTab("characters");
-                    },
-                    onLink: (characterId) => {
-                      getCharacterManager().linkBlock(
-                        characterId,
-                        activeBlock.id,
-                      );
-                      refreshCharacters();
-                    },
-                    onUnlink: () => {
-                      if (!linkedForActiveBlock) {
-                        return;
+        <div className="flex w-64 shrink-0 flex-col border-l border-panel-border bg-panel">
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {selectedCharacter ? (
+              <CharacterInspector
+                character={selectedCharacter}
+                document={document}
+                onChange={handleCharacterFieldChange}
+                onJumpToBlock={(blockId) => {
+                  scrollEditorToBlock(editor, blockId);
+                }}
+                onClose={() => setSelectedCharacterId(null)}
+              />
+            ) : (
+              <InspectorPanel
+                settings={{
+                  type: activeBlock.type,
+                  font: activeBlock.font,
+                  size: activeBlock.size,
+                  exportVisible: activeBlock.exportVisible,
+                }}
+                blockTypes={blockTypes}
+                onChange={handleInspectorChange}
+                onCreateBlockType={openCreateBlockType}
+                onRenameBlockType={openRenameBlockType}
+                onDeleteBlockType={openDeleteBlockType}
+                entityLink={
+                  activeBlock.type === "character" && activeBlock.id
+                    ? {
+                        blockId: activeBlock.id,
+                        cueText: activeBlock.content,
+                        linked: linkedForActiveBlock,
+                        characters,
+                        onCreateFromCue: () => {
+                          const name =
+                            activeBlock.content.trim() || "New Character";
+                          const created = getCharacterManager().create({
+                            name,
+                          });
+                          getCharacterManager().linkBlock(
+                            created.id,
+                            activeBlock.id,
+                          );
+                          refreshCharacters();
+                          setSelectedCharacterId(created.id);
+                          setLeftRailTab("characters");
+                        },
+                        onLink: (characterId) => {
+                          getCharacterManager().linkBlock(
+                            characterId,
+                            activeBlock.id,
+                          );
+                          refreshCharacters();
+                        },
+                        onUnlink: () => {
+                          if (!linkedForActiveBlock) {
+                            return;
+                          }
+                          getCharacterManager().unlinkBlock(
+                            linkedForActiveBlock.id,
+                            activeBlock.id,
+                          );
+                          refreshCharacters();
+                        },
                       }
-                      getCharacterManager().unlinkBlock(
-                        linkedForActiveBlock.id,
-                        activeBlock.id,
-                      );
-                      refreshCharacters();
-                    },
-                  }
-                : null
-            }
+                    : null
+                }
+              />
+            )}
+          </div>
+          <ScratchpadPanel
+            notes={notes}
+            selectedId={selectedNoteId}
+            activeProjectId={activeProjectId}
+            activeProjectTitle={activeProject?.title}
+            onSelect={(note) => setSelectedNoteId(note.id)}
+            onCreate={() => {
+              setNoteDraft("Untitled idea");
+              setNoteError(null);
+              setNoteDialog({ kind: "create" });
+            }}
+            onRename={(note) => {
+              setNoteDraft(note.title);
+              setNoteError(null);
+              setNoteDialog({ kind: "rename", note });
+            }}
+            onDelete={(note) => {
+              setNoteError(null);
+              setNoteDialog({ kind: "delete", note });
+            }}
+            onChangeContent={handleNoteContentChange}
+            onChangeType={handleNoteTypeChange}
+            onSaveToProject={handleSaveNoteToProject}
           />
-        )}
+          <JonPanel />
+        </div>
       </div>
       <StatusBar
         projectName={activeProject?.title ?? "No Project"}
@@ -980,6 +1100,48 @@ export function AppShell() {
         error={characterError}
         onConfirm={confirmCharacterDialog}
         onCancel={() => setCharacterDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={noteDialog?.kind === "create"}
+        title="New Note"
+        message="Create a scratchpad note."
+        mode="prompt"
+        confirmLabel="Create"
+        promptValue={noteDraft}
+        promptPlaceholder="Untitled idea"
+        error={noteError}
+        onPromptChange={setNoteDraft}
+        onConfirm={confirmNoteDialog}
+        onCancel={() => setNoteDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={noteDialog?.kind === "rename"}
+        title="Rename Note"
+        message="Update the note title."
+        mode="prompt"
+        confirmLabel="Rename"
+        promptValue={noteDraft}
+        error={noteError}
+        onPromptChange={setNoteDraft}
+        onConfirm={confirmNoteDialog}
+        onCancel={() => setNoteDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={noteDialog?.kind === "delete"}
+        title="Delete Note"
+        message={
+          noteDialog?.kind === "delete"
+            ? `Permanently delete “${noteDialog.note.title}”?`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        error={noteError}
+        onConfirm={confirmNoteDialog}
+        onCancel={() => setNoteDialog(null)}
       />
 
       <ConfirmDialog

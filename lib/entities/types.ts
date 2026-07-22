@@ -3,7 +3,11 @@
  * deletedAt is reserved for a future trash/archive system (unused in MVP).
  */
 
-export type EntityKind = "block_type" | "block_instance" | "character";
+export type EntityKind =
+  | "block_type"
+  | "block_instance"
+  | "character"
+  | "note";
 
 export type EntityRecord<TData = unknown> = {
   id: string;

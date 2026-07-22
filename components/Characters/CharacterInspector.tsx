@@ -91,7 +91,7 @@ export function CharacterInspector({
   const linked = resolveLinkedBlocks(character, document);
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-l border-panel-border bg-panel">
+    <aside className="flex h-full min-h-0 w-full flex-col bg-panel">
       <div className="flex items-center justify-between border-b border-panel-border px-3 py-2">
         <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
           Character Inspector

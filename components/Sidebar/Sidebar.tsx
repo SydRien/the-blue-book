@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { Note } from "@/lib/notes/types";
 import type { ProjectWithDocuments } from "@/types/project";
 
 type SidebarProps = {
   projects: ProjectWithDocuments[];
   activeProjectId: string | null;
   activeDocumentId: string | null;
+  /** Creative notes saved to projects (filtered by projectId in render). */
+  projectNotes?: Note[];
   onSelectDocument: (projectId: string, documentId: string) => void;
+  onSelectNote?: (note: Note) => void;
   onCreateProject: () => void;
   onCreateDocument: (projectId: string) => Promise<void>;
   onRenameProject: (projectId: string, title: string) => Promise<void>;
@@ -42,7 +46,9 @@ export function Sidebar({
   projects,
   activeProjectId,
   activeDocumentId,
+  projectNotes = [],
   onSelectDocument,
+  onSelectNote,
   onCreateProject,
   onCreateDocument,
   onRenameProject,
@@ -376,6 +382,37 @@ export function Sidebar({
                         {creatingDoc ? "Creating…" : "+ Document"}
                       </button>
                     </li>
+                    {(() => {
+                      const linkedNotes = projectNotes.filter(
+                        (note) => note.projectId === project.id,
+                      );
+                      if (linkedNotes.length === 0) {
+                        return null;
+                      }
+                      return (
+                        <li className="mt-2">
+                          <p className="mb-1 px-2 font-mono text-[8px] tracking-[0.16em] text-muted uppercase">
+                            Notes
+                          </p>
+                          <ul className="space-y-0.5">
+                            {linkedNotes.map((note) => (
+                              <li key={note.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectNote?.(note)}
+                                  className="module-button w-full rounded-sm border border-transparent px-2 py-1.5 text-left font-mono text-[10px] text-foreground hover:border-panel-border"
+                                  title={note.title}
+                                >
+                                  <span className="block truncate">
+                                    {note.title}
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </li>
+                      );
+                    })()}
                   </ul>
                 </li>
               );
