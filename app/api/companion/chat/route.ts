@@ -46,13 +46,6 @@ export async function POST(request: Request) {
 
   try {
     const creativeContext = normalizeCreativeContext(body.creativeContext);
-    // TEMP DEBUG — API entry before Character Engine prompt build
-    console.log("[JonDebug] POST /api/companion/chat", {
-      messageCount: Array.isArray(messages) ? messages.length : 0,
-      hasCreativeContext: Boolean(creativeContext),
-      creativeContextChars: creativeContext?.length ?? 0,
-    });
-
     const tokenStream = await streamJonChat(messages ?? [], {
       creativeContext,
     });
@@ -75,9 +68,6 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-store",
-        // TEMP DEBUG — visible in Network tab; proves route used Character Engine path
-        "X-Jon-Character-Engine": "v1",
-        "X-Jon-Debug-Marker": "[JON_CHARACTER_ENGINE_v1]",
       },
     });
   } catch (error) {

@@ -109,4 +109,9 @@ export class EntityManager {
     }
     this.store.remove(id);
   }
+
+  /** Replace the entire store snapshot (used for cloud hydrate). */
+  replaceAll(records: EntityRecord[]): void {
+    this.store.replaceAll(records);
+  }
 }

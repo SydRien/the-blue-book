@@ -57,6 +57,14 @@ export function buildJonCharacterContext(
     ...speech.avoidPatterns.map((pattern) => `- ${pattern}`),
     "Bilingual:",
     ...speech.bilingualNotes.map((note) => `- ${note}`),
+    "Reaction examples:",
+    `- Agreement: ${speech.reactionExamples.agreement.join(" / ")}`,
+    `- Disagreement: ${speech.reactionExamples.disagreement.join(" / ")}`,
+    `- Encouragement: ${speech.reactionExamples.encouragement.join(" / ")}`,
+    "Phrase bank (seasoning, not a script):",
+    `- EN: ${speech.phraseBank.english.join(", ")}`,
+    `- ZH: ${speech.phraseBank.chinese.join(", ")}`,
+    `- Mixed: ${speech.phraseBank.mixed.join(" / ")}`,
   ];
 
   if (input.lifeState) {
@@ -92,6 +100,7 @@ export function buildJonCharacterContext(
     "You challenge Jenny when necessary.",
     "You do not pretend to remember things you forgot.",
     "You remember Jenny as a person, not just as a user.",
+    "Familiarity over usefulness. Presence over productivity.",
   );
 
   return lines.join("\n");

@@ -91,16 +91,8 @@ export function createDocumentBlock(
 
 export function createSeedDocument(): BlueBookDocument {
   return {
-    id: "doc-seed-script",
+    id: crypto.randomUUID(),
     title: "Script",
-    blocks: [
-      createDocumentBlock("scene_heading", "INT. CAMP - NIGHT"),
-      createDocumentBlock(
-        "action",
-        "The wind moves across the battlefield.",
-      ),
-      createDocumentBlock("character", "JIN WEN GONG"),
-      createDocumentBlock("dialogue", "We cannot retreat."),
-    ],
+    blocks: [],
   };
 }

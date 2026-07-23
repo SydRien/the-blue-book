@@ -1,22 +1,22 @@
 /**
- * TEMP debug — verify Character Engine is assembled into the system prompt.
+ * Verify Character Engine assembles into the system prompt.
  * Run: npx tsx scripts/debug-jon-prompt.ts
  */
-import {
-  buildJonPrompt,
-  JON_CHARACTER_ENGINE_DEBUG_MARKER,
-} from "../lib/companion/jonPromptBuilder";
+import { buildJonPrompt } from "../lib/companion/jonPromptBuilder";
 
 const prompt = buildJonPrompt();
 
 const checks = {
-  markerPrefix: prompt.startsWith(JON_CHARACTER_ENGINE_DEBUG_MARKER),
   youAreJon: prompt.includes("You are Jon."),
   personalityLabel: prompt.includes("ENFP/ENTP"),
   traits: prompt.includes("Traits:"),
   speech: prompt.includes("Speech:"),
   lifeState: prompt.includes("Current life state:"),
   howToTalk: prompt.includes("=== How to talk right now ==="),
+  familiarity: prompt.includes("Familiarity over usefulness"),
+  noForcedQuestions: prompt.includes(
+    "Do NOT end every message with a question",
+  ),
 };
 
 console.log("\n=== Jon Character Engine prompt checks ===");

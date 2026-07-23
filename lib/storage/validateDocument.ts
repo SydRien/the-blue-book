@@ -69,11 +69,9 @@ export function parseStoredBlocks(value: unknown): DocumentBlock[] | null {
     return null;
   }
 
-  const blocks = value
+  return value
     .map(normalizeBlock)
     .filter((block): block is DocumentBlock => block !== null);
-
-  return blocks.length > 0 ? blocks : null;
 }
 
 export function parseStoredDocument(value: unknown): BlueBookDocument | null {
@@ -92,7 +90,7 @@ export function parseStoredDocument(value: unknown): BlueBookDocument | null {
   }
 
   const blocks = parseStoredBlocks(candidate.blocks);
-  if (!blocks) {
+  if (blocks === null) {
     return null;
   }
 

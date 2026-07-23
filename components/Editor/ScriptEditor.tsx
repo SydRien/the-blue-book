@@ -2,6 +2,7 @@
 
 import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { Node } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
@@ -26,7 +27,17 @@ import {
 } from "@/lib/editor/editorSettings";
 import { ScriptBlock } from "@/lib/editor/scriptBlock";
 import { UniqueBlockId } from "@/lib/editor/uniqueBlockId";
-import type { BlueBookDocument, BlockTypeId } from "@/types/document";
+import {
+  type BlueBookDocument,
+  type BlockTypeId,
+} from "@/types/document";
+
+/** Allow zero blocks (empty Script documents). */
+const BlueBookDoc = Node.create({
+  name: "doc",
+  topNode: true,
+  content: "block*",
+});
 
 export type ActiveBlockState = {
   id: string;
@@ -160,7 +171,9 @@ export function ScriptEditor({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
+      BlueBookDoc,
       StarterKit.configure({
+        document: false,
         paragraph: false,
         heading: false,
         blockquote: false,
@@ -306,12 +319,24 @@ export function ScriptEditor({
               </p>
             </div>
 
-            <div className="rounded-sm border border-panel-border bg-panel/80 p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]">
+            <div className="relative rounded-sm border border-panel-border bg-panel/80 p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]">
               <EditorContent editor={editor} />
+              {document.blocks.length === 0 ? (
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 py-10 text-center">
+                  <p className="font-mono text-[11px] tracking-[0.16em] text-muted uppercase">
+                    Empty script
+                  </p>
+                  <p className="mt-2 font-mono text-[10px] leading-relaxed text-muted">
+                    Pick a block type above to start writing.
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             <p className="mt-4 text-center font-mono text-[10px] tracking-[0.12em] text-muted uppercase">
-              Right-click or ⋯ · Rename / Delete block
+              {document.blocks.length === 0
+                ? "No blocks yet"
+                : "Right-click or ⋯ · Rename / Delete block"}
             </p>
           </div>
         </div>

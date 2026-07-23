@@ -11,6 +11,7 @@ import type {
   UpdateDocumentInput,
   UpdateProjectInput,
 } from "@/types/project";
+import type { Note, NoteType } from "@/lib/notes/types";
 import type { BlueBookRepository, SyncStatus } from "@/lib/storage/types";
 import { parseStoredBlocks } from "@/lib/storage/validateDocument";
 
@@ -27,6 +28,16 @@ type DocumentRow = {
   project_id: string;
   title: string;
   content_json: unknown;
+  created_at: string;
+  updated_at: string;
+};
+
+type NoteRow = {
+  id: string;
+  project_id: string | null;
+  title: string;
+  content: string;
+  type: string;
   created_at: string;
   updated_at: string;
 };
@@ -57,6 +68,30 @@ function mapDocumentSummary(row: DocumentRow): DocumentSummary {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+function isNoteType(value: string): value is NoteType {
+  return (
+    value === "idea" ||
+    value === "reference" ||
+    value === "research" ||
+    value === "random"
+  );
+}
+
+function mapNote(row: NoteRow): Note {
+  const note: Note = {
+    id: row.id,
+    title: row.title,
+    content: row.content ?? "",
+    type: isNoteType(row.type) ? row.type : "idea",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+  if (row.project_id) {
+    note.projectId = row.project_id;
+  }
+  return note;
 }
 
 export class SupabaseBlueBookRepository implements BlueBookRepository {
@@ -267,7 +302,7 @@ export class SupabaseBlueBookRepository implements BlueBookRepository {
     }
 
     const blocks = parseStoredBlocks(data.content_json);
-    if (!blocks) {
+    if (blocks === null) {
       return null;
     }
 
@@ -304,5 +339,55 @@ export class SupabaseBlueBookRepository implements BlueBookRepository {
       .eq("id", input.projectId);
 
     return "synced";
+  }
+
+  async listNotes(): Promise<Note[]> {
+    const { data, error } = await this.client
+      .from("notes")
+      .select(
+        "id, project_id, title, content, type, created_at, updated_at",
+      )
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data as NoteRow[] | null)?.map(mapNote) ?? [];
+  }
+
+  async upsertNote(note: Note): Promise<Note> {
+    const userId = await requireUserId(this.client);
+    const timestamp = note.updatedAt || new Date().toISOString();
+    const createdAt = note.createdAt || timestamp;
+
+    const { data, error } = await this.client.from("notes").upsert(
+      {
+        id: note.id,
+        user_id: userId,
+        project_id: note.projectId || null,
+        title: note.title.trim() || "Untitled",
+        content: note.content ?? "",
+        type: note.type,
+        created_at: createdAt,
+        updated_at: timestamp,
+      },
+      { onConflict: "id" },
+    ).select(
+      "id, project_id, title, content, type, created_at, updated_at",
+    ).single();
+
+    if (error || !data) {
+      throw error ?? new Error("Failed to upsert note");
+    }
+
+    return mapNote(data as NoteRow);
+  }
+
+  async deleteNote(noteId: string): Promise<void> {
+    const { error } = await this.client.from("notes").delete().eq("id", noteId);
+    if (error) {
+      throw error;
+    }
   }
 }
