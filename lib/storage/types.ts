@@ -9,6 +9,7 @@ import type {
   UpdateDocumentInput,
   UpdateProjectInput,
 } from "@/types/project";
+import type { Note } from "@/lib/notes/types";
 
 export type SyncStatus =
   | "local-only"
@@ -19,7 +20,7 @@ export type SyncStatus =
   | "loading";
 
 /**
- * Backend-agnostic repository for projects and documents.
+ * Backend-agnostic repository for projects, documents, and scratchpad notes.
  * UI and editor depend on this interface only.
  */
 export interface BlueBookRepository {
@@ -37,4 +38,9 @@ export interface BlueBookRepository {
     projectId?: string,
   ): Promise<BlueBookDocument | null>;
   saveDocument(input: SaveDocumentInput): Promise<SyncStatus>;
+
+  /** Scratchpad notes — offline-first when wrapped. */
+  listNotes(): Promise<Note[]>;
+  upsertNote(note: Note): Promise<Note>;
+  deleteNote(noteId: string): Promise<void>;
 }

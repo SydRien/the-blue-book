@@ -154,6 +154,31 @@ export function AppShell() {
     setNotes(getNoteManager().list());
   }, []);
 
+  const syncNoteToCloud = useCallback(async (note: Note) => {
+    try {
+      await repositoryRef.current.upsertNote(note);
+    } catch {
+      // Local note already saved; cloud catch-up is best-effort.
+    }
+  }, []);
+
+  const syncDeleteNoteToCloud = useCallback(async (noteId: string) => {
+    try {
+      await repositoryRef.current.deleteNote(noteId);
+    } catch {
+      // Local delete already applied.
+    }
+  }, []);
+
+  const hydrateNotesFromCloud = useCallback(async () => {
+    try {
+      const listed = await repositoryRef.current.listNotes();
+      setNotes(listed);
+    } catch {
+      refreshNotes();
+    }
+  }, [refreshNotes]);
+
   const refreshVersions = useCallback((documentId: string | null) => {
     if (!documentId) {
       setVersions([]);
@@ -203,7 +228,7 @@ export function AppShell() {
 
     if (withDocuments.length === 0) {
       const project = await repository.createProject({
-        title: "Chengpu Battle VR",
+        title: "Project 1",
         description: "Personal writing project",
       });
       const created = await repository.createDocument({
@@ -224,6 +249,7 @@ export function AppShell() {
       skipNextSaveRef.current = true;
       setDocument(created);
       setSyncStatus(isLocalOnly ? "saved-local" : "synced");
+      await hydrateNotesFromCloud();
       return;
     }
 
@@ -272,6 +298,7 @@ export function AppShell() {
     setActiveProjectId(nextProject.id);
     setActiveDocumentId(nextDocumentId);
     setSyncStatus(isLocalOnly ? "saved-local" : "synced");
+    await hydrateNotesFromCloud();
   }
 
   useEffect(() => {
@@ -682,6 +709,7 @@ export function AppShell() {
           const created = manager.create({ title, type: "idea" });
           refreshNotes();
           setSelectedNoteId(created.id);
+          void syncNoteToCloud(created);
           break;
         }
         case "rename": {
@@ -690,16 +718,19 @@ export function AppShell() {
             setNoteError("Title is required");
             return;
           }
-          manager.rename(noteDialog.note.id, title);
+          const renamed = manager.rename(noteDialog.note.id, title);
           refreshNotes();
+          void syncNoteToCloud(renamed);
           break;
         }
         case "delete": {
-          manager.delete(noteDialog.note.id);
-          if (selectedNoteId === noteDialog.note.id) {
+          const deletedId = noteDialog.note.id;
+          manager.delete(deletedId);
+          if (selectedNoteId === deletedId) {
             setSelectedNoteId(null);
           }
           refreshNotes();
+          void syncDeleteNoteToCloud(deletedId);
           break;
         }
       }
@@ -712,21 +743,24 @@ export function AppShell() {
   }
 
   function handleNoteContentChange(noteId: string, content: string) {
-    getNoteManager().update(noteId, { content });
+    const updated = getNoteManager().update(noteId, { content });
     refreshNotes();
+    void syncNoteToCloud(updated);
   }
 
   function handleNoteTypeChange(noteId: string, type: NoteType) {
-    getNoteManager().update(noteId, { type });
+    const updated = getNoteManager().update(noteId, { type });
     refreshNotes();
+    void syncNoteToCloud(updated);
   }
 
   function handleSaveNoteToProject(note: Note) {
     if (!activeProjectId) {
       return;
     }
-    getNoteManager().saveToProject(note.id, activeProjectId);
+    const updated = getNoteManager().saveToProject(note.id, activeProjectId);
     refreshNotes();
+    void syncNoteToCloud(updated);
   }
 
   function openVersionHistory(documentId: string) {

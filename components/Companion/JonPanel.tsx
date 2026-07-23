@@ -65,6 +65,13 @@ async function streamJonReply(
   return full;
 }
 
+function splitJonBubbles(content: string): string[] {
+  return content
+    .split(/\n\n+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 export function JonPanel({
   project = null,
   document = null,
@@ -209,25 +216,42 @@ export function JonPanel({
       >
         {messages.length === 0 && !streamText ? (
           <p className="font-mono text-[9px] leading-relaxed text-muted">
-            Jon&apos;s here — brainstorm, argue, vent. Not a writing machine.
+            Jon&apos;s here — text him like a friend. Not a writing machine.
           </p>
         ) : null}
 
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`rounded-sm border px-2 py-1.5 font-mono text-[10px] leading-relaxed ${
-              message.role === "user"
-                ? "ml-3 border-panel-border bg-panel-inset text-foreground"
-                : "mr-3 border-panel-border bg-panel-raised text-foreground"
-            }`}
-          >
-            <p className="mb-0.5 font-mono text-[8px] tracking-[0.14em] text-muted uppercase">
-              {message.role === "user" ? "You" : "Jon"}
-            </p>
-            <p className="whitespace-pre-wrap break-words">{message.content}</p>
-          </div>
-        ))}
+        {messages.map((message) => {
+          if (message.role === "user") {
+            return (
+              <div
+                key={message.id}
+                className="ml-3 rounded-sm border border-panel-border bg-panel-inset px-2 py-1.5 font-mono text-[10px] leading-relaxed text-foreground"
+              >
+                <p className="mb-0.5 font-mono text-[8px] tracking-[0.14em] text-muted uppercase">
+                  You
+                </p>
+                <p className="whitespace-pre-wrap break-words">
+                  {message.content}
+                </p>
+              </div>
+            );
+          }
+
+          const bubbles = splitJonBubbles(message.content);
+          return bubbles.map((bubble, index) => (
+            <div
+              key={`${message.id}-${index}`}
+              className="mr-3 rounded-sm border border-panel-border bg-panel-raised px-2 py-1.5 font-mono text-[10px] leading-relaxed text-foreground"
+            >
+              {index === 0 ? (
+                <p className="mb-0.5 font-mono text-[8px] tracking-[0.14em] text-muted uppercase">
+                  Jon
+                </p>
+              ) : null}
+              <p className="whitespace-pre-wrap break-words">{bubble}</p>
+            </div>
+          ));
+        })}
 
         {streamText ? (
           <div className="mr-3 rounded-sm border border-panel-border bg-panel-raised px-2 py-1.5 font-mono text-[10px] leading-relaxed text-foreground">

@@ -9,6 +9,7 @@ import type {
   UpdateDocumentInput,
   UpdateProjectInput,
 } from "@/types/project";
+import type { Note } from "@/lib/notes/types";
 import type { LocalBlueBookRepository } from "@/lib/storage/localBlueBookRepository";
 import type { BlueBookRepository, SyncStatus } from "@/lib/storage/types";
 
@@ -157,6 +158,63 @@ export class OfflineFirstRepository implements BlueBookRepository {
       return "synced";
     } catch {
       return "sync-error";
+    }
+  }
+
+  async listNotes(): Promise<Note[]> {
+    try {
+      const remoteNotes = await this.remote.listNotes();
+      const localNotes = await this.local.listNotes();
+      const byId = new Map<string, Note>();
+
+      for (const note of localNotes) {
+        byId.set(note.id, note);
+      }
+      for (const note of remoteNotes) {
+        const local = byId.get(note.id);
+        if (!local || note.updatedAt >= local.updatedAt) {
+          byId.set(note.id, note);
+        }
+      }
+
+      const merged = Array.from(byId.values()).sort((a, b) =>
+        b.updatedAt.localeCompare(a.updatedAt),
+      );
+      await this.local.cacheNotes(merged);
+
+      // Push notes that only exist locally (or are newer) — best-effort.
+      for (const note of merged) {
+        const remote = remoteNotes.find((item) => item.id === note.id);
+        if (!remote || note.updatedAt > remote.updatedAt) {
+          try {
+            await this.remote.upsertNote(note);
+          } catch {
+            // ignore; next bootstrap can retry
+          }
+        }
+      }
+
+      return merged;
+    } catch {
+      return this.local.listNotes();
+    }
+  }
+
+  async upsertNote(note: Note): Promise<Note> {
+    const localNote = await this.local.upsertNote(note);
+    try {
+      return await this.remote.upsertNote(localNote);
+    } catch {
+      return localNote;
+    }
+  }
+
+  async deleteNote(noteId: string): Promise<void> {
+    await this.local.deleteNote(noteId);
+    try {
+      await this.remote.deleteNote(noteId);
+    } catch {
+      // Local delete already applied.
     }
   }
 }

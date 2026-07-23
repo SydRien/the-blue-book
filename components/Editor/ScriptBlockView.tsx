@@ -8,6 +8,27 @@ import {
 import { useBlockEditorContext } from "@/components/Editor/BlockEditorContext";
 import { DEFAULT_BLOCK_STYLE, type BlockStyle } from "@/types/document";
 
+function isContinuationOfSameType(
+  editor: NodeViewProps["editor"],
+  getPos: NodeViewProps["getPos"],
+  type: string,
+): boolean {
+  const pos = getPos();
+  if (typeof pos !== "number") {
+    return false;
+  }
+  const $pos = editor.state.doc.resolve(pos);
+  const index = $pos.index($pos.depth);
+  if (index <= 0) {
+    return false;
+  }
+  const previous = $pos.node($pos.depth).child(index - 1);
+  if (previous.type.name !== "scriptBlock") {
+    return false;
+  }
+  return String(previous.attrs.type ?? "action") === type;
+}
+
 export function ScriptBlockView({ node, editor, getPos }: NodeViewProps) {
   const { getBlockLabel, getBlockAccent, onOpenBlockMenu } =
     useBlockEditorContext();
@@ -17,6 +38,7 @@ export function ScriptBlockView({ node, editor, getPos }: NodeViewProps) {
   const label = getBlockLabel(type);
   const accent = getBlockAccent(type);
   const style = (node.attrs.style ?? DEFAULT_BLOCK_STYLE) as BlockStyle;
+  const groupedContinue = isContinuationOfSameType(editor, getPos, type);
 
   function selectThisBlock() {
     const pos = getPos();
@@ -39,12 +61,13 @@ export function ScriptBlockView({ node, editor, getPos }: NodeViewProps) {
   return (
     <NodeViewWrapper
       as="div"
-      className="script-block"
+      className={`script-block${groupedContinue ? " script-block--grouped-continue" : ""}`}
       data-script-block=""
       data-id={blockId}
       data-type={type}
       data-label={label}
       data-language={node.attrs.language ?? "en"}
+      data-grouped-continue={groupedContinue ? "true" : undefined}
       style={{
         fontFamily: style.font,
         fontSize: `${style.size}px`,
@@ -55,10 +78,17 @@ export function ScriptBlockView({ node, editor, getPos }: NodeViewProps) {
         openMenu(event.clientX, event.clientY);
       }}
     >
-      <div className="script-block-toolbar" contentEditable={false}>
-        <span className="script-block-label" style={{ color: accent }}>
-          {label}
-        </span>
+      <div
+        className={`script-block-toolbar${groupedContinue ? " script-block-toolbar--continue" : ""}`}
+        contentEditable={false}
+      >
+        {!groupedContinue ? (
+          <span className="script-block-label" style={{ color: accent }}>
+            {label}
+          </span>
+        ) : (
+          <span className="script-block-label script-block-label--spacer" aria-hidden />
+        )}
         <button
           type="button"
           className="script-block-menu-btn"

@@ -117,6 +117,64 @@ export class NoteManager {
     }
     this.manager.delete(id);
   }
+
+  /**
+   * Upsert a note by id (local cache / sync). Preserves timestamps when provided.
+   */
+  upsert(note: Note): Note {
+    const data: NoteData = {
+      content: note.content,
+      type: isNoteType(note.type) ? note.type : DEFAULT_NOTE_DATA.type,
+    };
+    if (note.projectId) {
+      data.projectId = note.projectId;
+    }
+
+    const existing = this.manager.get(note.id);
+    if (existing && existing.kind === "note") {
+      const updated = this.manager.update<NoteData>(note.id, {
+        name: note.title,
+        data: {
+          content: data.content,
+          type: data.type,
+          projectId: note.projectId ?? "",
+        },
+      });
+      return toNote(updated as EntityRecord<NoteData>);
+    }
+
+    const created = this.manager.create<NoteData>({
+      id: note.id,
+      kind: "note",
+      name: note.title,
+      data,
+    });
+    return toNote(created);
+  }
+
+  /** Replace all local notes (cloud hydrate). Notes store holds only notes. */
+  replaceAll(notes: Note[]): void {
+    const records = notes.map((note) => {
+      const data: NoteData = {
+        content: note.content,
+        type: isNoteType(note.type) ? note.type : DEFAULT_NOTE_DATA.type,
+      };
+      if (note.projectId) {
+        data.projectId = note.projectId;
+      }
+      const record: EntityRecord<NoteData> = {
+        id: note.id,
+        kind: "note",
+        name: note.title,
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt,
+        deletedAt: null,
+        data,
+      };
+      return record as EntityRecord;
+    });
+    this.manager.replaceAll(records);
+  }
 }
 
 let singleton: NoteManager | null = null;

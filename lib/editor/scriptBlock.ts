@@ -152,21 +152,8 @@ export const ScriptBlock = Node.create({
 
           const from = $from.before(depth);
           const to = $from.after(depth);
-          const docChildCount = state.doc.childCount;
 
-          // Keep at least one block in the document.
-          if (docChildCount <= 1) {
-            if (dispatch) {
-              const empty = state.schema.nodes.scriptBlock!.create(
-                createAttrs("action"),
-              );
-              dispatch(
-                tr.replaceWith(from, to, empty).scrollIntoView(),
-              );
-            }
-            return true;
-          }
-
+          // Allow empty documents — do not force a replacement action block.
           if (dispatch) {
             dispatch(tr.delete(from, to).scrollIntoView());
           }

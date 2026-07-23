@@ -10,6 +10,8 @@ import type {
   UpdateDocumentInput,
   UpdateProjectInput,
 } from "@/types/project";
+import { getNoteManager } from "@/lib/notes/noteManager";
+import type { Note } from "@/lib/notes/types";
 import type { BlueBookRepository, SyncStatus } from "@/lib/storage/types";
 import {
   parseStoredBlocks,
@@ -243,7 +245,7 @@ export class LocalBlueBookRepository implements BlueBookRepository {
     }
 
     const blocks = parseStoredBlocks(stored.blocks);
-    if (!blocks) {
+    if (blocks === null) {
       return null;
     }
 
@@ -314,5 +316,26 @@ export class LocalBlueBookRepository implements BlueBookRepository {
     const db = readDb();
     db.projects[project.id] = project;
     writeDb(db);
+  }
+
+  async listNotes(): Promise<Note[]> {
+    return getNoteManager().list();
+  }
+
+  async upsertNote(note: Note): Promise<Note> {
+    return getNoteManager().upsert(note);
+  }
+
+  async deleteNote(noteId: string): Promise<void> {
+    const existing = getNoteManager().get(noteId);
+    if (!existing) {
+      return;
+    }
+    getNoteManager().delete(noteId);
+  }
+
+  /** Used by offline-first layer to hydrate notes from the cloud. */
+  async cacheNotes(notes: Note[]): Promise<void> {
+    getNoteManager().replaceAll(notes);
   }
 }
