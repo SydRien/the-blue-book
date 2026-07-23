@@ -48,6 +48,7 @@ import {
   getStorageBackend,
   type SyncStatus,
 } from "@/lib/storage";
+import type { DocumentSyncStatus } from "@/lib/storage/documentSyncStatus";
 import { getVersionManager } from "@/lib/versionHistory/versionManager";
 import type { DocumentVersion } from "@/lib/versionHistory/types";
 import {
@@ -101,6 +102,9 @@ export function AppShell() {
     useState<ActiveBlockState>(DEFAULT_ACTIVE_BLOCK);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("loading");
+  const [documentSyncById, setDocumentSyncById] = useState<
+    Record<string, DocumentSyncStatus>
+  >({});
   const [creatingProject, setCreatingProject] = useState(false);
   const [creatingDocumentId, setCreatingDocumentId] = useState<string | null>(
     null,
@@ -140,6 +144,7 @@ export function AppShell() {
   const [versionError, setVersionError] = useState<string | null>(null);
   const [editorEpoch, setEditorEpoch] = useState(0);
   const skipNextSaveRef = useRef(true);
+  const noteSyncChainRef = useRef<Promise<void>>(Promise.resolve());
   const isLocalOnly = getStorageBackend() === "local";
 
   const refreshBlockTypes = useCallback(() => {
@@ -154,20 +159,35 @@ export function AppShell() {
     setNotes(getNoteManager().list());
   }, []);
 
-  const syncNoteToCloud = useCallback(async (note: Note) => {
-    try {
-      await repositoryRef.current.upsertNote(note);
-    } catch {
-      // Local note already saved; cloud catch-up is best-effort.
-    }
-  }, []);
+  const syncNoteToCloud = useCallback(
+    (note: Note) => {
+      noteSyncChainRef.current = noteSyncChainRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          try {
+            // Always sync the newest local row for this id (avoids races between
+            // create-sync and save-to-project-sync wiping projectId).
+            const latest = getNoteManager().get(note.id) ?? note;
+            await repositoryRef.current.upsertNote(latest);
+            refreshNotes();
+          } catch {
+            // Local note already saved; cloud catch-up is best-effort.
+          }
+        });
+    },
+    [refreshNotes],
+  );
 
-  const syncDeleteNoteToCloud = useCallback(async (noteId: string) => {
-    try {
-      await repositoryRef.current.deleteNote(noteId);
-    } catch {
-      // Local delete already applied.
-    }
+  const syncDeleteNoteToCloud = useCallback((noteId: string) => {
+    noteSyncChainRef.current = noteSyncChainRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await repositoryRef.current.deleteNote(noteId);
+        } catch {
+          // Local delete already applied.
+        }
+      });
   }, []);
 
   const hydrateNotesFromCloud = useCallback(async () => {
@@ -244,16 +264,19 @@ export function AppShell() {
         })),
       );
       setProjects(nextProjects);
+      seedDocumentSync(nextProjects);
       setActiveProjectId(project.id);
       setActiveDocumentId(created.id);
       skipNextSaveRef.current = true;
       setDocument(created);
       setSyncStatus(isLocalOnly ? "saved-local" : "synced");
+      markDocumentSync(created.id, "synced");
       await hydrateNotesFromCloud();
       return;
     }
 
     setProjects(withDocuments);
+    seedDocumentSync(withDocuments);
 
     const nextProjectId =
       preferredProjectId &&
@@ -286,6 +309,7 @@ export function AppShell() {
       );
       skipNextSaveRef.current = true;
       setDocument(created);
+      markDocumentSync(created.id, "synced");
     } else {
       const loaded = await repository.loadDocument(
         nextDocumentId,
@@ -293,6 +317,7 @@ export function AppShell() {
       );
       skipNextSaveRef.current = true;
       setDocument(loaded ?? createSeedDocument());
+      markDocumentSync(nextDocumentId, "synced");
     }
 
     setActiveProjectId(nextProject.id);
@@ -327,6 +352,32 @@ export function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap once
   }, []);
 
+  function markDocumentSync(
+    documentId: string,
+    status: DocumentSyncStatus,
+  ) {
+    setDocumentSyncById((current) => {
+      if (current[documentId] === status) {
+        return current;
+      }
+      return { ...current, [documentId]: status };
+    });
+  }
+
+  function seedDocumentSync(nextProjects: ProjectWithDocuments[]) {
+    setDocumentSyncById((current) => {
+      const next = { ...current };
+      for (const project of nextProjects) {
+        for (const item of project.documents) {
+          if (!(item.id in next)) {
+            next[item.id] = "synced";
+          }
+        }
+      }
+      return next;
+    });
+  }
+
   useEffect(() => {
     if (!document || !activeProjectId || !activeDocumentId) {
       return;
@@ -334,11 +385,14 @@ export function AppShell() {
 
     if (skipNextSaveRef.current) {
       skipNextSaveRef.current = false;
+      markDocumentSync(activeDocumentId, "synced");
       return;
     }
 
+    markDocumentSync(activeDocumentId, "dirty");
     setSyncStatus(isLocalOnly ? "saved-local" : "syncing");
     const timeoutId = window.setTimeout(() => {
+      markDocumentSync(activeDocumentId, "syncing");
       void repositoryRef.current
         .saveDocument({
           projectId: activeProjectId,
@@ -351,12 +405,19 @@ export function AppShell() {
         .then((status) => {
           if (isLocalOnly) {
             setSyncStatus("saved-local");
+            markDocumentSync(activeDocumentId, "synced");
             return;
           }
-          setSyncStatus(status === "synced" ? "synced" : "sync-error");
+          const ok = status === "synced";
+          setSyncStatus(ok ? "synced" : "sync-error");
+          markDocumentSync(activeDocumentId, ok ? "synced" : "dirty");
         })
         .catch(() => {
           setSyncStatus(isLocalOnly ? "saved-local" : "sync-error");
+          markDocumentSync(
+            activeDocumentId,
+            isLocalOnly ? "synced" : "dirty",
+          );
         });
     }, SAVE_DEBOUNCE_MS);
 
@@ -388,11 +449,13 @@ export function AppShell() {
       setDocument(loaded ?? createSeedDocument());
       setEditorEpoch((value) => value + 1);
       setSyncStatus(isLocalOnly ? "saved-local" : "synced");
+      markDocumentSync(documentId, "synced");
     } catch {
       skipNextSaveRef.current = true;
       setDocument(createSeedDocument());
       setEditorEpoch((value) => value + 1);
       setSyncStatus("sync-error");
+      markDocumentSync(documentId, "dirty");
     }
   }
 
@@ -709,7 +772,7 @@ export function AppShell() {
           const created = manager.create({ title, type: "idea" });
           refreshNotes();
           setSelectedNoteId(created.id);
-          void syncNoteToCloud(created);
+          syncNoteToCloud(created);
           break;
         }
         case "rename": {
@@ -720,7 +783,7 @@ export function AppShell() {
           }
           const renamed = manager.rename(noteDialog.note.id, title);
           refreshNotes();
-          void syncNoteToCloud(renamed);
+          syncNoteToCloud(renamed);
           break;
         }
         case "delete": {
@@ -730,7 +793,7 @@ export function AppShell() {
             setSelectedNoteId(null);
           }
           refreshNotes();
-          void syncDeleteNoteToCloud(deletedId);
+          syncDeleteNoteToCloud(deletedId);
           break;
         }
       }
@@ -745,13 +808,13 @@ export function AppShell() {
   function handleNoteContentChange(noteId: string, content: string) {
     const updated = getNoteManager().update(noteId, { content });
     refreshNotes();
-    void syncNoteToCloud(updated);
+    syncNoteToCloud(updated);
   }
 
   function handleNoteTypeChange(noteId: string, type: NoteType) {
     const updated = getNoteManager().update(noteId, { type });
     refreshNotes();
-    void syncNoteToCloud(updated);
+    syncNoteToCloud(updated);
   }
 
   function handleSaveNoteToProject(note: Note) {
@@ -760,7 +823,7 @@ export function AppShell() {
     }
     const updated = getNoteManager().saveToProject(note.id, activeProjectId);
     refreshNotes();
-    void syncNoteToCloud(updated);
+    syncNoteToCloud(updated);
   }
 
   function openVersionHistory(documentId: string) {
@@ -840,6 +903,7 @@ export function AppShell() {
                 projects={projects}
                 activeProjectId={activeProjectId}
                 activeDocumentId={activeDocumentId}
+                documentSyncById={documentSyncById}
                 projectNotes={notes}
                 onSelectDocument={handleSelectDocument}
                 onSelectNote={(note) => {
