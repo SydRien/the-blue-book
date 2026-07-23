@@ -287,7 +287,7 @@ export function Sidebar({
                                 onClick={() =>
                                   onSelectDocument(project.id, document.id)
                                 }
-                                className={`module-button flex min-w-0 flex-1 items-center justify-between rounded-sm border px-2 py-1.5 text-left ${
+                                className={`module-button flex min-w-0 flex-1 items-center rounded-sm border px-2 py-1.5 text-left ${
                                   isActive
                                     ? "border-accent-soft"
                                     : "border-transparent"
@@ -297,11 +297,6 @@ export function Sidebar({
                                 <span className="truncate font-mono text-[11px] text-foreground">
                                   {document.title}
                                 </span>
-                                {isActive ? (
-                                  <span className="ml-1 shrink-0 font-mono text-[9px] tracking-widest text-led-blue uppercase">
-                                    Open
-                                  </span>
-                                ) : null}
                               </button>
                               <div
                                 className="relative shrink-0"
