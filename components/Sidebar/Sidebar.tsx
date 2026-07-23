@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SyncCloudIcon } from "@/components/ui/SyncCloudIcon";
 import type { Note } from "@/lib/notes/types";
+import type { DocumentSyncStatus } from "@/lib/storage/documentSyncStatus";
 import type { ProjectWithDocuments } from "@/types/project";
 
 type SidebarProps = {
   projects: ProjectWithDocuments[];
   activeProjectId: string | null;
   activeDocumentId: string | null;
+  /** Per-document cloud/local sync indicator. */
+  documentSyncById?: Record<string, DocumentSyncStatus>;
   /** Creative notes saved to projects (filtered by projectId in render). */
   projectNotes?: Note[];
   onSelectDocument: (projectId: string, documentId: string) => void;
@@ -46,6 +50,7 @@ export function Sidebar({
   projects,
   activeProjectId,
   activeDocumentId,
+  documentSyncById = {},
   projectNotes = [],
   onSelectDocument,
   onSelectNote,
@@ -287,16 +292,19 @@ export function Sidebar({
                                 onClick={() =>
                                   onSelectDocument(project.id, document.id)
                                 }
-                                className={`module-button flex min-w-0 flex-1 items-center rounded-sm border px-2 py-1.5 text-left ${
+                                className={`module-button flex min-w-0 flex-1 items-center gap-1.5 rounded-sm border px-2 py-1.5 text-left ${
                                   isActive
                                     ? "border-accent-soft"
                                     : "border-transparent"
                                 }`}
                                 data-active={isActive}
                               >
-                                <span className="truncate font-mono text-[11px] text-foreground">
+                                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground">
                                   {document.title}
                                 </span>
+                                <SyncCloudIcon
+                                  status={documentSyncById[document.id] ?? "synced"}
+                                />
                               </button>
                               <div
                                 className="relative shrink-0"

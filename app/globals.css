@@ -234,6 +234,51 @@ body {
   box-shadow: inset 0 0 0 1px var(--shadow-inset-bottom);
 }
 
+/* Document sync cloud status (sidebar) */
+.sync-cloud-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.sync-cloud-icon__outline,
+.sync-cloud-icon__pulse {
+  fill: none;
+}
+
+.sync-cloud-icon--synced .sync-cloud-icon__outline {
+  stroke: var(--led-green);
+}
+
+.sync-cloud-icon--dirty .sync-cloud-icon__outline {
+  stroke: var(--muted);
+  opacity: 0.55;
+}
+
+.sync-cloud-icon--syncing .sync-cloud-icon__outline {
+  stroke: var(--led-cyan);
+}
+
+.sync-cloud-icon--syncing .sync-cloud-icon__pulse {
+  stroke: var(--led-cyan);
+  animation: sync-cloud-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes sync-cloud-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(1px);
+  }
+}
+
 /* Hardware theme slider */
 .theme-toggle-track {
   position: relative;
