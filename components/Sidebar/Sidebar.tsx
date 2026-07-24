@@ -12,6 +12,8 @@ type SidebarProps = {
   activeDocumentId: string | null;
   /** Per-document cloud/local sync indicator. */
   documentSyncById?: Record<string, DocumentSyncStatus>;
+  /** Per-note cloud/local sync indicator. */
+  noteSyncById?: Record<string, DocumentSyncStatus>;
   /** Creative notes saved to projects (filtered by projectId in render). */
   projectNotes?: Note[];
   onSelectDocument: (projectId: string, documentId: string) => void;
@@ -51,6 +53,7 @@ export function Sidebar({
   activeProjectId,
   activeDocumentId,
   documentSyncById = {},
+  noteSyncById = {},
   projectNotes = [],
   onSelectDocument,
   onSelectNote,
@@ -403,12 +406,15 @@ export function Sidebar({
                                 <button
                                   type="button"
                                   onClick={() => onSelectNote?.(note)}
-                                  className="module-button w-full rounded-sm border border-transparent px-2 py-1.5 text-left font-mono text-[10px] text-foreground hover:border-panel-border"
+                                  className="module-button flex w-full items-center gap-1.5 rounded-sm border border-transparent px-2 py-1.5 text-left font-mono text-[10px] text-foreground hover:border-panel-border"
                                   title={note.title}
                                 >
-                                  <span className="block truncate">
+                                  <span className="min-w-0 flex-1 truncate">
                                     {note.title}
                                   </span>
+                                  <SyncCloudIcon
+                                    status={noteSyncById[note.id] ?? "synced"}
+                                  />
                                 </button>
                               </li>
                             ))}
