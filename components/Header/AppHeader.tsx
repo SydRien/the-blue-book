@@ -1,5 +1,6 @@
 "use client";
 
+import { BlueBookMark } from "@/components/Brand/BlueBookMark";
 import { ThemeToggle } from "@/components/Header/ThemeToggle";
 
 type AppHeaderProps = {
@@ -16,7 +17,8 @@ export function AppHeader({ projectName, documentName }: AppHeaderProps) {
           <span className="panel-screw" />
         </div>
         <div className="flex items-baseline gap-3">
-          <h1 className="font-mono text-sm font-medium tracking-[0.18em] text-foreground uppercase">
+          <h1 className="flex items-center gap-2 self-center font-mono text-sm font-medium tracking-[0.18em] text-foreground uppercase">
+            <BlueBookMark size={18} />
             The Blue Book
           </h1>
           <span className="text-xs text-muted">/</span>

@@ -7,6 +7,7 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/client";
 import { getStorageBackend } from "@/lib/storage";
+import { BlueBookMark } from "@/components/Brand/BlueBookMark";
 
 type AuthGateProps = {
   children: ReactNode;
@@ -104,7 +105,8 @@ export function AuthGate({ children }: AuthGateProps) {
           className="w-full max-w-sm rounded-sm border border-panel-border bg-panel p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]"
         >
           <div className="mb-4 flex items-center justify-between">
-            <h1 className="font-mono text-sm tracking-[0.18em] text-foreground uppercase">
+            <h1 className="flex items-center gap-2 font-mono text-sm tracking-[0.18em] text-foreground uppercase">
+              <BlueBookMark size={18} />
               The Blue Book
             </h1>
             <div className="flex gap-1.5" aria-hidden>
