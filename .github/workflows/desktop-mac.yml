@@ -1,0 +1,57 @@
+name: Desktop app (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build universal .dmg and .zip
+        env:
+          # Unsigned build: no Apple Developer ID certificate yet.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run dist:mac
+
+      - name: List build output
+        run: ls -la dist
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-blue-book-mac
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: The Blue Book for Mac ${{ github.ref_name }}
+          body: |
+            Download **The-Blue-Book-…-mac.dmg**, open it and drag The Blue Book into Applications.
+
+            The app isn't signed with an Apple Developer ID yet. The first time you open it, right-click it in Applications and choose **Open**, or go to System Settings → Privacy & Security and click **Open Anyway**.
+          files: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip

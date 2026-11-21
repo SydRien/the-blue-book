@@ -1,0 +1,49 @@
+{
+  "name": "the-blue-book-desktop",
+  "productName": "The Blue Book",
+  "version": "1.0.0",
+  "description": "The Blue Book for macOS",
+  "author": "SydRien",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac --universal --publish never"
+  },
+  "devDependencies": {
+    "electron": "^39.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.sydrien.thebluebook",
+    "productName": "The Blue Book",
+    "copyright": "© SydRien",
+    "files": [
+      "main.cjs",
+      "offline.html",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "The Blue Book",
+      "artifactName": "The-Blue-Book-${version}-mac.dmg"
+    },
+    "zip": {
+      "artifactName": "The-Blue-Book-${version}-mac.zip"
+    }
+  }
+}
