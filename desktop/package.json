@@ -17,7 +17,7 @@
   "build": {
     "appId": "com.sydrien.thebluebook",
     "productName": "The Blue Book",
-    "copyright": "© SydRien",
+    "copyright": "\u00a9 SydRien",
     "files": [
       "main.cjs",
       "offline.html",
@@ -36,14 +36,12 @@
       ],
       "identity": null,
       "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "artifactName": "The-Blue-Book-${version}-mac.${ext}"
     },
     "dmg": {
       "title": "The Blue Book",
       "artifactName": "The-Blue-Book-${version}-mac.dmg"
-    },
-    "zip": {
-      "artifactName": "The-Blue-Book-${version}-mac.zip"
     }
   }
 }
