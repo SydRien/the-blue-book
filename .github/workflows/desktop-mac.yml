@@ -34,6 +34,10 @@ jobs:
       - name: List build output
         run: ls -la dist
 
+      - name: Read app version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -44,10 +48,12 @@ jobs:
           if-no-files-found: error
 
       - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        if: startsWith(github.ref, 'refs/tags/desktop-v') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          name: The Blue Book for Mac ${{ github.ref_name }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('desktop-v{0}', steps.version.outputs.version) }}
+          target_commitish: ${{ github.sha }}
+          name: The Blue Book for Mac v${{ steps.version.outputs.version }}
           body: |
             Download **The-Blue-Book-…-mac.dmg**, open it and drag The Blue Book into Applications.
 

@@ -18,7 +18,7 @@ You only have to do this once.
 Builds run on GitHub's Mac servers (`.github/workflows/desktop-mac.yml`):
 
 - **New release:** bump `version` in `desktop/package.json`, commit, then push a tag such as `desktop-v1.0.1`. The workflow builds a universal (Apple silicon + Intel) `.dmg` and `.zip` and attaches them to a GitHub release.
-- **Test build:** run the workflow by hand from the Actions tab. The files appear as a downloadable artifact.
+- **Or run it by hand** from the Actions tab: it publishes a release tagged `desktop-v<version>` from `desktop/package.json`, so bump the version first.
 
 Website changes don't need a new desktop build, because the app loads the live site.
 
