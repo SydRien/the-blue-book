@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
+import { ServiceWorkerRegistrar } from "@/components/Offline/ServiceWorkerRegistrar";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
 import "./globals.css";
 
@@ -41,6 +42,7 @@ export default function RootLayout({
       </head>
       <body className="h-full overflow-hidden bg-background text-foreground">
         <ThemeProvider>{children}</ThemeProvider>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

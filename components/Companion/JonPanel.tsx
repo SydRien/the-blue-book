@@ -20,6 +20,12 @@ async function streamJonReply(
   creativeContext: string | null,
   onToken: (token: string) => void,
 ): Promise<string> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    throw new Error(
+      "Jon needs an internet connection. Your writing is still saved on this device.",
+    );
+  }
+
   const response = await fetch("/api/companion/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -17,6 +17,7 @@ export type SyncStatus =
   | "syncing"
   | "synced"
   | "sync-error"
+  | "offline"
   | "loading";
 
 /**
