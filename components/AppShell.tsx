@@ -47,6 +47,7 @@ import {
   createBlueBookRepository,
   getStorageBackend,
   type SyncStatus,
+  OfflineFirstRepository,
 } from "@/lib/storage";
 import type { DocumentSyncStatus } from "@/lib/storage/documentSyncStatus";
 import { getVersionManager } from "@/lib/versionHistory/versionManager";
@@ -146,6 +147,35 @@ export function AppShell() {
   const skipNextSaveRef = useRef(true);
   const noteSyncChainRef = useRef<Promise<void>>(Promise.resolve());
   const isLocalOnly = getStorageBackend() === "local";
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const activeIdsRef = useRef<{ projectId: string | null; documentId: string | null }>({
+    projectId: null,
+    documentId: null,
+  });
+  const documentSyncRef = useRef<Record<string, DocumentSyncStatus>>({});
+
+  /** Status to show when nothing is being saved right now. */
+  function cloudIdleStatus(): SyncStatus {
+    const repository = repositoryRef.current;
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      return "offline";
+    }
+    if (
+      repository instanceof OfflineFirstRepository &&
+      repository.snapshot().pending > 0
+    ) {
+      return "saved-local";
+    }
+    return "synced";
+  }
+
+  function repositoryHasPending(documentId: string): boolean {
+    const repository = repositoryRef.current;
+    return (
+      repository instanceof OfflineFirstRepository &&
+      repository.hasPendingChanges(documentId)
+    );
+  }
 
   const refreshBlockTypes = useCallback(() => {
     setBlockTypes(listAllBlockDefinitions());
@@ -269,7 +299,7 @@ export function AppShell() {
       setActiveDocumentId(created.id);
       skipNextSaveRef.current = true;
       setDocument(created);
-      setSyncStatus(isLocalOnly ? "saved-local" : "synced");
+      setSyncStatus(isLocalOnly ? "saved-local" : cloudIdleStatus());
       markDocumentSync(created.id, "synced");
       await hydrateNotesFromCloud();
       return;
@@ -322,7 +352,7 @@ export function AppShell() {
 
     setActiveProjectId(nextProject.id);
     setActiveDocumentId(nextDocumentId);
-    setSyncStatus(isLocalOnly ? "saved-local" : "synced");
+    setSyncStatus(isLocalOnly ? "saved-local" : cloudIdleStatus());
     await hydrateNotesFromCloud();
   }
 
@@ -408,9 +438,17 @@ export function AppShell() {
             markDocumentSync(activeDocumentId, "synced");
             return;
           }
-          const ok = status === "synced";
-          setSyncStatus(ok ? "synced" : "sync-error");
-          markDocumentSync(activeDocumentId, ok ? "synced" : "dirty");
+          if (status === "synced") {
+            setSyncStatus("synced");
+            markDocumentSync(activeDocumentId, "synced");
+          } else if (status === "saved-local") {
+            // Saved on this device and queued for the cloud.
+            setSyncStatus(navigator.onLine ? "saved-local" : "offline");
+            markDocumentSync(activeDocumentId, "dirty");
+          } else {
+            setSyncStatus("sync-error");
+            markDocumentSync(activeDocumentId, "dirty");
+          }
         })
         .catch(() => {
           setSyncStatus(isLocalOnly ? "saved-local" : "sync-error");
@@ -432,6 +470,77 @@ export function AppShell() {
     isLocalOnly,
   ]);
 
+  // Keep refs current for the sync listener below.
+  const syncHandlersRef = useRef({
+    refreshProjects,
+    handleSelectDocument,
+  });
+  useEffect(() => {
+    activeIdsRef.current = { projectId: activeProjectId, documentId: activeDocumentId };
+    documentSyncRef.current = documentSyncById;
+    syncHandlersRef.current = { refreshProjects, handleSelectDocument };
+  });
+
+  // Background sync: status, conflicts and changes from other devices.
+  useEffect(() => {
+    const repository = repositoryRef.current;
+    if (!(repository instanceof OfflineFirstRepository)) {
+      return;
+    }
+
+    return repository.subscribe((event) => {
+      if (event.type === "status") {
+        const { online, syncing, pending } = event.snapshot;
+        setSyncStatus((current) => {
+          if (current === "loading") return current;
+          if (!online) return "offline";
+          if (syncing) return "syncing";
+          if (pending > 0) return current === "sync-error" ? current : "saved-local";
+          return "synced";
+        });
+        if (online && !syncing && pending === 0) {
+          setDocumentSyncById((current) => {
+            let changed = false;
+            const next = { ...current };
+            for (const [id, status] of Object.entries(next)) {
+              if (status !== "synced") {
+                next[id] = "synced";
+                changed = true;
+              }
+            }
+            return changed ? next : current;
+          });
+        }
+        return;
+      }
+
+      const { projectId, documentId } = activeIdsRef.current;
+
+      if (event.type === "conflict") {
+        setSyncNotice(
+          `This script was also changed on another device. Your offline edits were kept as “${event.copyTitle}”.`,
+        );
+        void syncHandlersRef.current.refreshProjects(projectId, documentId);
+        if (documentId === event.documentId && projectId) {
+          void syncHandlersRef.current.handleSelectDocument(projectId, documentId);
+        }
+        return;
+      }
+
+      if (event.type === "remote-changed") {
+        if (
+          documentId &&
+          projectId &&
+          event.documentIds.includes(documentId) &&
+          documentSyncRef.current[documentId] !== "dirty" &&
+          documentSyncRef.current[documentId] !== "syncing"
+        ) {
+          void syncHandlersRef.current.handleSelectDocument(projectId, documentId);
+        }
+      }
+    });
+  }, []);
+
   async function handleSelectDocument(projectId: string, documentId: string) {
     setSyncStatus("loading");
     setActiveProjectId(projectId);
@@ -448,8 +557,11 @@ export function AppShell() {
       skipNextSaveRef.current = true;
       setDocument(loaded ?? createSeedDocument());
       setEditorEpoch((value) => value + 1);
-      setSyncStatus(isLocalOnly ? "saved-local" : "synced");
-      markDocumentSync(documentId, "synced");
+      setSyncStatus(isLocalOnly ? "saved-local" : cloudIdleStatus());
+      markDocumentSync(
+        documentId,
+        repositoryHasPending(documentId) ? "dirty" : "synced",
+      );
     } catch {
       skipNextSaveRef.current = true;
       setDocument(createSeedDocument());
@@ -1110,6 +1222,23 @@ export function AppShell() {
           />
         }
       />
+      {syncNotice ? (
+        <div
+          role="status"
+          className="flex shrink-0 items-center justify-between gap-3 border-t border-panel-border bg-panel px-4 py-1.5"
+        >
+          <span className="font-mono text-[10px] tracking-[0.08em] text-led-orange">
+            {syncNotice}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSyncNotice(null)}
+            className="font-mono text-[10px] tracking-widest text-muted uppercase hover:text-foreground"
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
       <StatusBar
         projectName={activeProject?.title ?? "No Project"}
         documentName={activeDocumentSummary?.title ?? document?.title ?? "—"}

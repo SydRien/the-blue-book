@@ -341,6 +341,103 @@ export class SupabaseBlueBookRepository implements BlueBookRepository {
     return "synced";
   }
 
+  /* ---- Sync helpers used by the offline-first layer ---- */
+
+  /** Create or update a project with a client-generated id (idempotent). */
+  async upsertProject(project: Project): Promise<Project> {
+    const userId = await requireUserId(this.client);
+    const { data, error } = await this.client
+      .from("projects")
+      .upsert(
+        {
+          id: project.id,
+          user_id: userId,
+          title: project.title.trim() || "Untitled Project",
+          description: project.description ?? "",
+          created_at: project.created_at,
+          updated_at: project.updated_at,
+        },
+        { onConflict: "id" },
+      )
+      .select("id, title, description, created_at, updated_at")
+      .single();
+
+    if (error || !data) {
+      throw error ?? new Error("Failed to upsert project");
+    }
+
+    return mapProject(data as ProjectRow);
+  }
+
+  /** Every document in a project, with content and cloud timestamps. */
+  async listDocumentsWithContent(
+    projectId: string,
+  ): Promise<{ summary: DocumentSummary; document: BlueBookDocument | null }[]> {
+    const { data, error } = await this.client
+      .from("documents")
+      .select("id, project_id, title, content_json, created_at, updated_at")
+      .eq("project_id", projectId)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return ((data as DocumentRow[] | null) ?? []).map((row) => {
+      const blocks = parseStoredBlocks(row.content_json);
+      return {
+        summary: mapDocumentSummary(row),
+        document: blocks === null ? null : { id: row.id, title: row.title, blocks },
+      };
+    });
+  }
+
+  /** Cloud timestamp of one document, or null if it doesn't exist there. */
+  async getDocumentMeta(
+    documentId: string,
+  ): Promise<{ updated_at: string; project_id: string } | null> {
+    const { data, error } = await this.client
+      .from("documents")
+      .select("updated_at, project_id")
+      .eq("id", documentId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return (data as { updated_at: string; project_id: string } | null) ?? null;
+  }
+
+  /** Save a document and return the cloud `updated_at` it was stored with. */
+  async saveDocumentReturningTimestamp(input: SaveDocumentInput): Promise<string> {
+    const userId = await requireUserId(this.client);
+    const timestamp = new Date().toISOString();
+
+    const { error } = await this.client.from("documents").upsert(
+      {
+        id: input.document.id,
+        project_id: input.projectId,
+        user_id: userId,
+        title: input.document.title,
+        content_json: input.document.blocks,
+        updated_at: timestamp,
+      },
+      { onConflict: "id" },
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    await this.client
+      .from("projects")
+      .update({ updated_at: timestamp })
+      .eq("id", input.projectId);
+
+    return timestamp;
+  }
+
   async listNotes(): Promise<Note[]> {
     const { data, error } = await this.client
       .from("notes")

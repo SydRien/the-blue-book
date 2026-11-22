@@ -24,6 +24,8 @@ function syncLabel(status: SyncStatus): string {
       return "Synced to Cloud";
     case "sync-error":
       return "Error · Local Kept";
+    case "offline":
+      return "Offline · Saved on Device";
   }
 }
 
@@ -40,6 +42,8 @@ function syncLed(status: SyncStatus): string {
       return "bg-led-green text-led-green";
     case "sync-error":
       return "bg-[#c45c5c] text-[#c45c5c]";
+    case "offline":
+      return "bg-led-orange text-led-orange";
   }
 }
 

@@ -9,6 +9,22 @@ import {
 import { getStorageBackend } from "@/lib/storage";
 import { BlueBookMark } from "@/components/Brand/BlueBookMark";
 
+/** Supabase keeps the signed-in session in localStorage under sb-<ref>-auth-token. */
+function hasStoredSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key && /^sb-.+-auth-token$/.test(key) && window.localStorage.getItem(key)) {
+        return true;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
 type AuthGateProps = {
   children: ReactNode;
 };
@@ -23,6 +39,7 @@ export function AuthGate({ children }: AuthGateProps) {
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [offlineAccess, setOfflineAccess] = useState(false);
 
   useEffect(() => {
     if (!needsAuth) {
@@ -31,10 +48,28 @@ export function AuthGate({ children }: AuthGateProps) {
 
     const client = getSupabaseClient();
 
-    void client.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setReady(true);
-    });
+    void client.auth
+      .getSession()
+      .then(({ data }) => {
+        setSession(data.session);
+        // Offline with an expired token: the session can't be refreshed, but
+        // this device was signed in, so let the writer in to work locally.
+        if (!data.session && !navigator.onLine && hasStoredSession()) {
+          setOfflineAccess(true);
+        }
+        setReady(true);
+      })
+      .catch(() => {
+        if (hasStoredSession()) setOfflineAccess(true);
+        setReady(true);
+      });
+
+    const handleOnline = () => {
+      void client.auth.getSession().then(({ data }) => {
+        if (data.session) setSession(data.session);
+      });
+    };
+    window.addEventListener("online", handleOnline);
 
     const {
       data: { subscription },
@@ -45,6 +80,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener("online", handleOnline);
     };
   }, [needsAuth]);
 
@@ -97,7 +133,7 @@ export function AuthGate({ children }: AuthGateProps) {
     );
   }
 
-  if (needsAuth && !session) {
+  if (needsAuth && !session && !offlineAccess) {
     return (
       <div className="flex h-full items-center justify-center bg-background px-4">
         <form
